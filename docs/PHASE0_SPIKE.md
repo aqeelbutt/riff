@@ -111,3 +111,51 @@ Stems: `services/stems/.venv/bin/mlx-audio-separator -m htdemucs_ft.yaml --model
 - Extend / repaint / lego task types: untested, not in V1 scope.
 - XL model quality: blocked on disk.
 - Language coverage: English only tested (engine claims 50+).
+
+---
+
+# Phase 0b/0c — jazz-rap, Hindi/Urdu, and rock-to-anything (same day)
+
+Follow-up renders for three requests: (a) a "hip-hop/rap with jazz" style, (b) remixing Indian and Pakistani songs, (c) rock → jazz-rap layout and rock → deep house. Scripts: `spike/run_desi_jazz.sh`, `spike/run_rock.sh`; fixtures in `spike/lyrics/` (`jazzrap`, `hindi-roman`, `hindi-devanagari`, `urdu-roman`, `urdu-script`, `rock`). Sources for the remix tests were rendered here first so every cover is rights-clean.
+
+## Are extra dependencies needed for Indian/Pakistani songs? **No.**
+
+- **Vocals in Hindi and Urdu are native to the engine.** Hindi is on its language list; Urdu rendered fine. The one thing that matters is the API's **`vocal_language` field (default `"en"`)** — pass `hi` / `ur` / `pa` / `bn` explicitly; it is now a `--lang` flag in the runner and becomes a language picker in the product.
+- **Both scripts work.** Romanized ("Hinglish"/Roman Urdu) and native script (Devanagari, Nastaliq) fed the same seed produced audio with identical tempo/loudness measurements — the engine tokenizes both. Which sounds more natural is a listening question (files below).
+- **The genre vocabulary already covers the space**: Bollywood (80s/90s filmi, R&B Bollywood pop), Punjabi pop, bhangra (567 entries), qawwali (40), ghazal (324), sufi (109), Urdu pop, Hindustani/Carnatic classical, "Desi pop". Style presets are caption templates, not code.
+- **Stems**: Demucs (`htdemucs_ft`, trained on Western pop) still separated the Hindi track in 49 s; tabla energy lands in `bass`/`drums`, harmonium + sitar in `other`, vocal in `vocals`. Good enough for Vocal-keep remixes. If Indian percussion needs its own stem later, the same tool ships Mel-Band-Roformer models (no new dependency).
+- **Time-stretch for Vocal-keep**: the `rubberband` CLI was already installed via Homebrew; `pyrubberband` was added to the stems venv and verified (1.0 s at 92 BPM → 0.74 s at 124 BPM). That was the only missing piece, and it isn't specific to Indian music.
+- Everything else (BPM/key detection via librosa, loudness via pyloudnorm, ffmpeg) is already in place. **No new packages.**
+
+## Timing (150 s of audio each, turbo, explicit `bpm` + `vocal_language`)
+
+| Run | What | Wall-clock | Detected BPM (target) |
+|---|---|---:|---:|
+| `jazzrap-turbo` | jazz-rap: Rhodes, upright bass, brushed drums, muted trumpet, laid-back rap | 31 s | 88 (88) |
+| `hindi-roman-turbo` | Bollywood ballad, romanized Hindi, `hi` | 36 s | 89 (92) |
+| `hindi-deva-turbo` | same seed, Devanagari lyrics | 30 s | 89 (92) |
+| `urdu-roman-turbo` | Pakistani sufi pop, Roman Urdu, `ur` | 30 s | 95 (96) |
+| `urdu-script-turbo` | same seed, Nastaliq lyrics | 30 s | 95 (96) |
+| `hindi-to-deephouse` | cover, strength 0.5, "Bollywood deep house, tabla over the groove" | 42 s | **125 (124)** |
+| `urdu-to-deephouse` | cover, strength 0.5, "sufi deep house, harmonium drone" | 39 s | **125 (122)** |
+| `rock-turbo` | alt-rock source, gritty male vocal | 48 s | 128 (128) |
+| `rock-to-jazzrap` | cover, strength 0.4 (big genre jump) | 45 s | 88 (88) |
+| `rock-to-deephouse` | cover, strength 0.5 | 42 s | 128 (124) — kept the source tempo |
+| stems on `hindi-roman-turbo` | htdemucs_ft | 49 s | — |
+
+Engine stayed up for all 11 renders plus the stems run (the stems tool ran only after the engine was idle — the one-GPU-workload rule).
+
+**Two product notes.** (1) With `bpm` passed explicitly every text2music render landed within 3 BPM of target — confirms the Phase 0 decision to send BPM from the Claude brief rather than rely on the caption. (2) `rock-to-deephouse` at strength 0.5 kept the rock's 128 BPM instead of moving to 124: at strength ≥0.5 the source rhythm wins. For a tempo change the preset should use ~0.4, or the Vocal-keep path (stretch the vocal, regenerate the bed at the target tempo). Both rock covers otherwise transformed genre (jazz-rap landed exactly on its 88 BPM half-time feel).
+
+## Listen (in `spike/out/share/`)
+
+1. `jazzrap-turbo_1.mp3` — the new style. *Deep and cool enough?*
+2. `hindi-roman-turbo_1.mp3` vs `hindi-deva-turbo_1.mp3` — same seed; *which pronunciation is more natural?* Decides whether the product transliterates or asks for native script.
+3. `urdu-roman-turbo_1.mp3` vs `urdu-script-turbo_1.mp3` — same test for Urdu.
+4. `hindi-to-deephouse_1.mp3`, `urdu-to-deephouse_1.mp3` — the actual use case (desi deep house / sufi house).
+5. `hindi-roman-turbo_1_vocals-stem.mp3` + `_other-stem.mp3` — how clean the vocal and the harmonium/sitar bed come apart.
+6. `rock-turbo_1.mp3` → `rock-to-jazzrap_1.mp3` → `rock-to-deephouse_1.mp3` — rock into both layouts.
+
+## Presets this adds to V1
+
+Create: **Jazz-rap / jazz-hop**, **Bollywood ballad**, **Punjabi pop / bhangra**, **Sufi pop / qawwali-inspired**, **Alt-rock** (plus a language picker: English, Hindi, Urdu, Punjabi, Bengali, …, and free text). Remix targets: **Deep house**, **Desi deep house** (tabla layer), **Sufi house** (harmonium drone), **Jazz-rap layout**, plus the originals. Every preset = caption template + default strength + target BPM; all live in one data file, no engine changes.

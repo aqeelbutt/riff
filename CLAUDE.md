@@ -18,6 +18,8 @@ This repo follows the same harness as PursuitAI: pnpm + turbo monorepo, `apps/ba
 - **Don't pre-load two DiT slots.** `ACESTEP_CONFIG_PATH2` keeps a second full model + a second compiled MLX VAE resident. Switch models on demand with `POST /v1/init {"model": "acestep-v15-sft"}` (~20 s) instead.
 - **The 5Hz LM is optional.** `thinking=false` skips it; the product's Claude "song brief" supplies BPM/key/structure. Load it lazily only for a feature that needs it; it's auto-skipped for `cover`/`repaint` anyway.
 - **Turbo needs `shift=3.0`** (not auto-corrected, unlike `guidance_scale`). 8 steps.
+- **Always pass `bpm` and `vocal_language`.** The caption's "118 BPM" is ignored without the LM; `vocal_language` defaults to `"en"` so Hindi/Urdu lyrics must send `hi`/`ur`. Romanized and native-script lyrics both work. Cover strength ≥0.5 keeps the SOURCE tempo; use ~0.4 for a tempo/genre jump.
+- **Style presets are data, not code** — caption template + default strength + target BPM. The engine's `genres_vocab.txt` already covers Bollywood/filmi, Punjabi/bhangra, qawwali, ghazal, sufi, Urdu pop, jazz-rap/jazz-hop, boom-bap, neo-soul.
 - **XL models (20 GB each) don't fit** on this Mac without freeing disk (~21 GB free after install).
 - Reference/source audio for `cover` goes up as `multipart/form-data` (`src_audio` file field); JSON paths must be absolute on the server.
 - zsh doesn't word-split unquoted variables — in scripts use `"$@"`/arrays, not `R="cmd args"; $R`.

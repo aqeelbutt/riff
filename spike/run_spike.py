@@ -139,7 +139,9 @@ def cmd_text2music(a: argparse.Namespace) -> None:
         body["shift"] = a.shift
     if a.bpm:
         body["bpm"] = a.bpm
-    print(f"▶ {a.name}: text2music model={a.model or 'default'} steps={a.steps} thinking={a.thinking} batch={a.batch} dur={a.duration}")
+    if a.lang:
+        body["vocal_language"] = a.lang
+    print(f"▶ {a.name}: text2music model={a.model or 'default'} steps={a.steps} thinking={a.thinking} batch={a.batch} dur={a.duration} lang={a.lang or 'en'}")
     started = time.time()
     resp = _req("/release_task", body)
     task_id = resp["data"]["task_id"]
@@ -166,7 +168,9 @@ def cmd_cover(a: argparse.Namespace) -> None:
         fields["shift"] = str(a.shift)
     if a.bpm:
         fields["bpm"] = str(a.bpm)
-    print(f"▶ {a.name}: cover src={Path(a.src).name} strength={a.strength} steps={a.steps}")
+    if a.lang:
+        fields["vocal_language"] = a.lang
+    print(f"▶ {a.name}: cover src={Path(a.src).name} strength={a.strength} steps={a.steps} lang={a.lang or 'en'}")
     started = time.time()
     resp = _multipart("/release_task", fields, {"src_audio": Path(a.src)})
     task_id = resp["data"]["task_id"]
@@ -209,6 +213,7 @@ def main() -> None:
     t.add_argument("--seed", type=int)
     t.add_argument("--model")
     t.add_argument("--bpm", type=int)
+    t.add_argument("--lang", help="vocal_language code, e.g. en, hi, ur, pa (default en)")
     t.set_defaults(fn=cmd_text2music)
 
     c = sub.add_parser("cover")
@@ -222,6 +227,7 @@ def main() -> None:
     c.add_argument("--batch", type=int, default=1)
     c.add_argument("--model")
     c.add_argument("--bpm", type=int)
+    c.add_argument("--lang", help="vocal_language code for regenerated vocals")
     c.set_defaults(fn=cmd_cover)
 
     i = sub.add_parser("init")

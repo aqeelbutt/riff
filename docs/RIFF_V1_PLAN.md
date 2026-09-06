@@ -57,7 +57,7 @@ Harness rules carried over verbatim: feature branch → `develop`, squash; `deve
 ### Two pipelines
 
 **Create (keywords → song)**
-1. User enters keywords + picks genre/mood chips (or free text). Optional: title, language, explicit/clean, duration target, instrumental-only.
+1. User enters keywords + picks genre/mood chips (or free text) — presets include Pop, Hip-Hop, **Jazz-Rap**, Folk, Rock, **Bollywood ballad**, **Punjabi pop/bhangra**, **Sufi pop**. A **vocal language** picker (English, Hindi, Urdu, Punjabi, Bengali, … — passed to the engine as `vocal_language`; lyrics in romanized or native script both work). Optional: title, explicit/clean, duration target, instrumental-only.
 2. `POST /lyrics/brief` — Claude turns keywords into a **Song Brief** (structured output): title options, genre, sub-genre, BPM range, key suggestion, mood, instrumentation, vocal style, song structure. Cheap, fast, editable.
 3. `POST /lyrics/write` — Claude writes full lyrics against the brief, emitting ACE-Step section tags (`[Intro] [Verse 1] [Pre-Chorus] [Chorus] [Bridge] [Outro]`). Each section is regenerable on its own (`POST /lyrics/regenerate-section`).
 4. `POST /songs/{id}/generate` — enqueues a job: brief + lyrics → ACE-Step caption/tags + lyrics → `POST /release_task` on the sidecar → poll `/query_result` → WAV → normalize → store → `generations` row. Produces **2 variations per run** (Suno convention) via different seeds.
@@ -66,7 +66,7 @@ Harness rules carried over verbatim: feature branch → `develop`, squash; `deve
 **Remix (existing song → new style)**
 1. User uploads an MP3/WAV/M4A they have rights to (rights checkbox recorded on the `uploads` row).
 2. Analysis job: stem separation via Demucs (MLX port on Mac, ~seconds), BPM + key via `librosa`, duration, loudness. Stems are stored and previewable (vocals / drums / bass / other).
-3. User picks a **style preset** (Deep House, Tech House, Lo-fi Hip-Hop, Synthwave, Drum & Bass, Acoustic, Orchestral, Reggaeton, Phonk, Afrobeats…) or writes a free style prompt. Each preset is a caption template + target BPM + structure hints; Deep House = 120–126 BPM, four-on-the-floor, sidechained pads, filtered chords.
+3. User picks a **style preset** (Deep House, Desi Deep House, Sufi House, Jazz-Rap layout, Tech House, Lo-fi Hip-Hop, Synthwave, Drum & Bass, Acoustic, Orchestral, Reggaeton, Phonk, Afrobeats…) or writes a free style prompt. Each preset is a caption template + default cover strength + target BPM + structure hints; Deep House = 120–126 BPM, four-on-the-floor, sidechained pads, filtered chords. Any source genre works (rock → jazz-rap and rock → deep house verified in Phase 0c); a big genre jump uses strength ~0.4, a tempo change ≥0.5 keeps the source rhythm.
 4. Two remix modes, both via ACE-Step reference-audio input:
    - **Cover** (default, simplest): ACE-Step cover mode with the original as reference + the new style caption. Keeps melody/lyrics, re-renders everything.
    - **Vocal-keep**: regenerate only the accompaniment in the new style, time-stretch the isolated original vocal to the target BPM (`pyrubberband`), re-layer, mixdown + loudness-normalize (`pyloudnorm`). Higher fidelity to the original singer, more moving parts.
