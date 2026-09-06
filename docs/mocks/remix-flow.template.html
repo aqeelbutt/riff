@@ -1,0 +1,436 @@
+<title>Riff Remix Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#0E1014;--bg-2:#141821;--sur:#171B24;--sur-2:#1E2330;--sur-3:#262C3A;--line:#2A3040;--line-2:#363D4E;--ink:#EEF0F4;--ink-2:#A6ADBB;--ink-3:#6E7684;--acc:#FF6A3D;--acc-2:#FF8A66;--acc-soft:rgba(255,106,61,.14);--mint:#5EE6B0;--mint-soft:rgba(94,230,176,.14);--vio:#A78BFA;--vio-soft:rgba(167,139,250,.14);--amber:#F5B640;--amber-soft:rgba(245,182,64,.14);--sans:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--disp:"Bricolage Grotesque","IBM Plex Sans",-apple-system,Helvetica,Arial,sans-serif;--r:12px;--r-sm:8px;--r-pill:999px}
+*{box-sizing:border-box}html{color-scheme:dark}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[contenteditable]:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+input,select,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;height:56px;padding:0 20px;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.wordmark{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.wordmark i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--acc);transform:rotate(45deg);box-shadow:0 0 0 3px var(--acc-soft)}
+.nav{display:flex;gap:4px}.nav button{padding:6px 12px;border-radius:var(--r-pill);color:var(--ink-2);font-weight:500}.nav button[aria-current="page"]{background:var(--sur-2);color:var(--ink)}.nav button:hover{color:var(--ink)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.engine{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);padding:5px 10px;border:1px solid var(--line);border-radius:var(--r-pill)}.engine b{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.help{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);color:var(--ink-2);font-family:var(--mono)}.help:hover{color:var(--ink);border-color:var(--line-2)}
+
+.wrap{max-width:1060px;margin:0 auto;padding:26px 24px 120px}
+.crumbs{display:flex;gap:6px;align-items:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:18px;flex-wrap:wrap}
+.crumbs span{padding:4px 10px;border-radius:var(--r-pill);border:1px solid var(--line)}
+.crumbs span.on{color:var(--ink);border-color:var(--acc);background:var(--acc-soft)}
+.crumbs span.done{color:var(--mint);border-color:transparent;background:var(--mint-soft)}
+.crumbs i{color:var(--ink-3);font-style:normal}
+h1{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1.05;margin:0;text-wrap:balance}
+.sub{color:var(--ink-2);margin:6px 0 0;font-size:14px;max-width:60ch}
+.state{display:none}.state.on{display:block}
+.lbl{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.lbl span{letter-spacing:0;text-transform:none;font-family:var(--sans);font-size:12px;color:var(--ink-3)}
+
+/* upload */
+.drop{margin-top:22px;border:1.5px dashed var(--line-2);border-radius:18px;padding:52px 24px;text-align:center;background:var(--sur);transition:border-color .12s,background .12s;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--acc);background:var(--bg-2)}
+.drop .g{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:var(--sur-2);border:1px solid var(--line);display:grid;place-items:center}
+.drop h2{font-family:var(--disp);font-weight:700;font-size:22px;margin:0 0 6px}
+.drop p{color:var(--ink-2);margin:0}
+.drop .fmt{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:12px}
+.or{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.1em;margin:18px 0}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.examples{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.ex{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--sur);text-align:left}
+.ex:hover{border-color:var(--line-2)}
+.ex .art{width:40px;height:40px;border-radius:8px;flex:none;background:linear-gradient(135deg,#7C3AED,#EC4899)}
+.ex .art.b{background:linear-gradient(135deg,#F59E0B,#EF4444)}
+.ex .art.c{background:linear-gradient(135deg,#06B6D4,#3B82F6)}
+.ex b{display:block;font-weight:600}.ex span{font-size:12.5px;color:var(--ink-2)}
+.rights{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:12px 14px;border-radius:var(--r);background:var(--sur);border:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
+.rights input{margin-top:3px;accent-color:var(--acc)}
+
+/* analysis */
+.anl{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:22px}
+@media (max-width:860px){.anl{grid-template-columns:1fr}}
+.card{background:var(--sur);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h3{font-family:var(--disp);font-weight:700;font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.card h3 .st{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mint)}
+.file{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.file .art{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#EC4899)}
+.file b{display:block;font-family:var(--disp);font-size:18px;font-weight:700}
+.file span{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.wave{position:relative;height:80px;background:var(--bg-2);border-radius:var(--r-sm);overflow:hidden;cursor:pointer}
+.wave canvas{width:100%;height:100%;display:block}.wave .ph{position:absolute;top:0;bottom:0;left:0;width:0;background:rgba(255,106,61,.16);border-right:1.5px solid var(--acc);pointer-events:none}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+@media (max-width:600px){.facts{grid-template-columns:repeat(2,1fr)}}
+.f{padding:10px 12px;background:var(--bg-2);border-radius:var(--r-sm)}
+.f .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.f .v{font-family:var(--mono);font-size:16px;font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+.f .v small{font-size:11px;color:var(--ink-3);font-family:var(--sans)}
+.f .v.ok{color:var(--mint)}
+.stems{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.stem{display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--bg-2);font-size:12.5px;color:var(--ink-2)}
+.stem i{width:8px;height:8px;border-radius:50%}
+.stem[aria-pressed="true"]{border-color:var(--acc);color:var(--ink)}
+.stem .lv{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.skel{background:linear-gradient(90deg,var(--sur-2) 25%,var(--sur-3) 50%,var(--sur-2) 75%);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:6px;height:14px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.lyr{max-height:300px;overflow:auto;font-size:14.5px;line-height:1.6;white-space:pre-wrap;padding:4px 2px;outline:none;border-radius:6px}
+.lyr:focus{background:var(--bg-2)}
+.lyr .ts{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-right:8px;user-select:none}
+.seg2{display:inline-grid;grid-auto-flow:column;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:2px;gap:2px}
+.seg2 button{padding:3px 9px;border-radius:4px;color:var(--ink-2);font-size:12px}.seg2 button[aria-pressed="true"]{background:var(--sur-3);color:var(--ink)}
+.note{margin-top:10px;font-size:12.5px;color:var(--ink-2);padding:8px 10px;border-left:2px solid var(--vio);background:var(--vio-soft);border-radius:0 6px 6px 0}
+.note.warn{border-color:var(--amber);background:var(--amber-soft)}
+.stg{display:grid;gap:8px;margin-top:18px;max-width:560px}
+.st-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sur);color:var(--ink-3)}
+.st-row .dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line-2);display:grid;place-items:center;font-size:11px;flex:none}
+.st-row.cur{color:var(--ink);border-color:var(--line-2)}.st-row.cur .dot{border-color:var(--acc);border-top-color:transparent;animation:sp .8s linear infinite}
+.st-row.done{color:var(--ink-2)}.st-row.done .dot{background:var(--mint);border-color:var(--mint);color:#052}
+.st-row .tm{margin-left:auto;font-family:var(--mono);font-size:11.5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.actions{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:var(--r);font-weight:600;font-size:14.5px;transition:transform .08s,background .12s;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--acc);color:#1A0C06;box-shadow:0 8px 24px -8px rgba(255,106,61,.6)}.btn.primary:hover{background:var(--acc-2)}.btn.primary:disabled{background:var(--sur-3);color:var(--ink-3);box-shadow:none;cursor:not-allowed}
+.btn.ghost{background:var(--sur-2);color:var(--ink);border:1px solid var(--line)}.btn.ghost:hover{border-color:var(--line-2)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:var(--r-sm)}.btn.link{color:var(--ink-2);padding:6px 8px}.btn.link:hover{color:var(--ink)}
+.est{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+
+/* style */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:14px}
+.pre{position:relative;text-align:left;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--sur);transition:border-color .12s,transform .12s;min-height:104px;display:flex;flex-direction:column;gap:4px}
+.pre:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.pre[aria-pressed="true"]{border-color:var(--acc);background:linear-gradient(180deg,var(--acc-soft),transparent)}
+.pre b{font-family:var(--disp);font-weight:700;font-size:16px}
+.pre span{font-size:12.5px;color:var(--ink-2)}
+.pre .bpm{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.pre .tag{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--mint)}
+.pre.custom{border-style:dashed;justify-content:center;align-items:center;text-align:center}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+@media (max-width:860px){.opts{grid-template-columns:1fr}}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sur);border:1px solid var(--line);border-radius:var(--r-sm);padding:3px;gap:3px}
+.seg button{padding:8px 4px;border-radius:6px;color:var(--ink-2);font-size:13px;line-height:1.2}.seg button small{display:block;font-size:10.5px;color:var(--ink-3);font-weight:400}
+.seg button[aria-pressed="true"]{background:var(--sur-3);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 11px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--sur);color:var(--ink-2);font-size:13px}
+.chip:hover{border-color:var(--line-2);color:var(--ink)}.chip[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--ink)}
+.slider{display:flex;align-items:center;gap:10px;padding:6px 0}
+.slider input{flex:1;accent-color:var(--acc)}
+.slider small{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);width:64px}
+.slider small:last-child{text-align:right}
+.sval{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sur);margin-top:8px}
+.tog b{font-weight:600;font-size:13.5px;display:block}.tog span{font-size:12px;color:var(--ink-2)}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--sur-3);position:relative;flex:none;border:1px solid var(--line-2)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink-2);transition:.15s}
+.sw[aria-checked="true"]{background:var(--acc)}.sw[aria-checked="true"]::after{left:18px;background:#1A0C06}
+.cta-bar{position:sticky;bottom:88px;margin-top:22px;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--sur) 94%,transparent);backdrop-filter:blur(10px);border:1px solid var(--line-2);flex-wrap:wrap}
+.cta-bar .sum{flex:1;font-size:13px;color:var(--ink-2);min-width:200px}.cta-bar .sum b{color:var(--ink)}
+
+/* render */
+.render{max-width:600px;margin:5vh auto 0}
+.prog{height:6px;background:var(--sur-2);border-radius:3px;overflow:hidden;margin:18px 0}.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc-2));border-radius:3px;transition:width .4s}
+
+/* result */
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+@media (max-width:860px){.ab{grid-template-columns:1fr}}
+.tk{background:var(--sur);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .12s}
+.tk.playing{border-color:var(--acc)}
+.tk .th{display:flex;align-items:center;gap:10px}.tk .th .name{font-family:var(--disp);font-weight:800;font-size:19px}.tk .th .meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-left:auto}
+.tk.remix .th .name::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc);margin-right:8px;vertical-align:2px}
+.tr{display:flex;align-items:center;gap:8px}
+.play{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}.play:hover{background:#fff}
+.time{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:6px;margin-left:auto}.acts .btn{padding:7px 11px;font-size:12.5px;border-radius:var(--r-sm)}
+.after{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}.after .spacer{flex:1}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tags span{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;background:var(--sur-2);color:var(--ink-2)}
+.sync{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:14px;font-size:13px;color:var(--ink-2)}
+
+/* player + toast + modal */
+.player{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;height:76px;padding:0 20px;background:color-mix(in srgb,var(--sur) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);transform:translateY(100%);transition:transform .25s}
+.player.on{transform:none}.player .np{display:flex;align-items:center;gap:12px;min-width:0}.player .art{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#7C3AED,#EC4899);flex:none}
+.player .np .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player .np .s{font-size:12px;color:var(--ink-2)}
+.player .mid{display:flex;align-items:center;gap:12px}.player .bar{flex:1;height:4px;background:var(--sur-3);border-radius:2px;position:relative;cursor:pointer}.player .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:2px;width:0}
+.player .tm{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}.player .rt{display:flex;gap:8px;align-items:center}
+@media (max-width:860px){.player{grid-template-columns:auto 1fr;gap:10px}.player .rt{display:none}}
+.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,10px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r-pill);font-weight:500;font-size:13.5px;z-index:40;transition:.18s;pointer-events:none}.toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;place-items:center;padding:20px}.modal.on{display:grid}
+.modal .card{max-width:560px;width:100%;padding:22px 24px;max-height:85vh;overflow:auto;border-color:var(--line-2)}
+.modal h3{font-size:22px}.modal p,.modal li{color:var(--ink-2);font-size:13.5px}.modal ul{padding-left:18px;margin:0 0 12px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wordmark"><i></i>Riff</div>
+  <nav class="nav" aria-label="Main"><button data-toast="Create flow is the other mock">Create</button><button data-toast="Library is next">Library</button><button aria-current="page">Remix</button></nav>
+  <div class="right"><div class="engine"><b></b>engine · turbo · ~1 min / remix</div><button class="help" id="helpBtn" aria-label="About this mock">?</button></div>
+</header>
+
+<main class="wrap">
+  <div class="crumbs" id="crumbs"><span class="on" data-c="0">1 · Song</span><i>→</i><span data-c="1">2 · Check</span><i>→</i><span data-c="2">3 · Style</span><i>→</i><span data-c="3">4 · Remix</span></div>
+
+  <!-- ---------- 1 upload ---------- -->
+  <div class="state on" id="s-upload">
+    <h1>Remix a song you own</h1>
+    <p class="sub">Drop in a track. We'll separate the vocal, find the tempo and key, pull out the lyrics, then rebuild it in any style — keeping your voice.</p>
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Upload a song">
+      <div class="g"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg></div>
+      <h2>Drop your song here</h2>
+      <p>or click to choose a file</p>
+      <div class="fmt">MP3 · WAV · M4A · FLAC · up to 10 minutes</div>
+    </div>
+    <label class="rights"><input type="checkbox" id="rights"><span>This is my own recording, or I have the rights to remix it. <span style="color:var(--ink-3)">Riff runs on your Mac; nothing is uploaded anywhere.</span></span></label>
+    <div class="or">or try an example</div>
+    <div class="examples">
+      <button class="ex" data-ex="hindi"><span class="art"></span><span><b>Tu Hi Mera Sukoon</b><span>Bollywood ballad · Hindi · 2:30 · made in Riff</span></span></button>
+      <button class="ex" data-ex="pop"><span class="art b"></span><span><b>Run With Me</b><span>Pop · English · 2:30 · made in Riff</span></span></button>
+      <button class="ex" data-ex="rock"><span class="art c"></span><span><b>We Don't Sleep</b><span>Alt-rock · English · 2:30 · made in Riff</span></span></button>
+    </div>
+  </div>
+
+  <!-- ---------- 2 analysis ---------- -->
+  <div class="state" id="s-check">
+    <h1 id="checkTitle">Reading “Tu Hi Mera Sukoon”</h1>
+    <p class="sub" id="checkSub">Separating the vocal, finding tempo and key, listening for the lyrics. About 30 seconds on this Mac.</p>
+    <div class="stg" id="anStages">
+      <div class="st-row"><span class="dot"></span>Reading the file<span class="tm"></span></div>
+      <div class="st-row"><span class="dot"></span>Separating vocal · drums · bass · other<span class="tm"></span></div>
+      <div class="st-row"><span class="dot"></span>Finding tempo, key and loudness<span class="tm"></span></div>
+      <div class="st-row"><span class="dot"></span>Listening for the lyrics<span class="tm"></span></div>
+    </div>
+    <div class="anl" id="anl" hidden>
+      <div class="card">
+        <h3>Your song <span class="st">ANALYZED</span></h3>
+        <div class="file"><span class="art"></span><div><b id="fName">Tu Hi Mera Sukoon</b><span id="fMeta">tu-hi-mera-sukoon.wav · 2:30 · 48 kHz stereo</span></div></div>
+        <div class="wave" id="wOrig" tabindex="0" aria-label="Original song"><canvas></canvas><div class="ph"></div></div>
+        <div class="tr" style="margin-top:10px"><button class="play" data-play="orig" aria-label="Play original"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="time" data-time="orig">0:00 / 0:30</span></div>
+        <div class="facts">
+          <div class="f"><div class="k">Tempo</div><div class="v">92 <small>BPM</small></div></div>
+          <div class="f"><div class="k">Key</div><div class="v">F♯ major</div></div>
+          <div class="f"><div class="k">Vocals</div><div class="v ok">✓ found</div></div>
+          <div class="f"><div class="k">Loudness</div><div class="v">−16 <small>LUFS</small></div></div>
+        </div>
+        <div class="lbl" style="margin-top:14px">Stems <span>solo one to check the split</span></div>
+        <div class="stems" id="stems">
+          <button class="stem" aria-pressed="false"><i style="background:var(--acc)"></i>Vocal <span class="lv">25%</span></button>
+          <button class="stem" aria-pressed="false"><i style="background:var(--amber)"></i>Drums <span class="lv">14%</span></button>
+          <button class="stem" aria-pressed="false"><i style="background:var(--vio)"></i>Bass <span class="lv">35%</span></button>
+          <button class="stem" aria-pressed="false"><i style="background:var(--mint)"></i>Other · sitar, harmonium <span class="lv">26%</span></button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Lyrics <span class="seg2" style="margin-left:auto" id="script"><button aria-pressed="true">Roman</button><button>Native</button></span></h3>
+        <div class="lbl"><span>Heard in <b style="color:var(--ink)">Hindi</b> · <button class="btn link" style="padding:0;font-size:12px" data-toast="Language picker opens here">change</button></span><span>click a line to fix it</span></div>
+        <div class="lyr" id="lyr" contenteditable="true" spellcheck="false"></div>
+        <div class="note">Lyrics are transcribed from your vocal, so we can re-sing them in a new voice, show them while you listen, and keep them exactly when the AI remixes around your own voice.</div>
+      </div>
+    </div>
+    <div class="actions" id="checkActions" hidden>
+      <button class="btn primary" id="toStyle">Looks right → choose a style</button>
+      <button class="btn link" id="backUp">Different song</button>
+    </div>
+  </div>
+
+  <!-- ---------- 3 style ---------- -->
+  <div class="state" id="s-style">
+    <h1>How should it sound?</h1>
+    <p class="sub">Pick a direction. Every preset keeps your song's melody and structure; you control how far it travels.</p>
+    <div class="grid" id="presets">
+      <button class="pre" aria-pressed="true" data-p="Deep House" data-bpm="124"><b>Deep House</b><span>Four-on-the-floor, warm pads, filtered chords</span><span class="bpm">120–126 BPM</span></button>
+      <button class="pre" data-p="Chill Deep House" data-bpm="108"><b>Chill Deep House</b><span>Slower, dreamy, Rhodes and piano melodies</span><span class="bpm">104–112 BPM</span><span class="tag">NEW</span></button>
+      <button class="pre" data-p="Desi Deep House" data-bpm="124"><b>Desi Deep House</b><span>Deep house with a tabla layer over the groove</span><span class="bpm">122–126 BPM</span><span class="tag">NEW</span></button>
+      <button class="pre" data-p="Sufi House" data-bpm="122"><b>Sufi House</b><span>Harmonium drone, dholak, hypnotic build</span><span class="bpm">118–124 BPM</span><span class="tag">NEW</span></button>
+      <button class="pre" data-p="Jazz-Rap layout" data-bpm="88"><b>Jazz-Rap layout</b><span>Boom-bap groove, Rhodes, upright bass, horns</span><span class="bpm">84–92 BPM</span><span class="tag">NEW</span></button>
+      <button class="pre" data-p="Rap-Rock" data-bpm="100"><b>Rap-Rock</b><span>Nu-metal guitars, rapped verses, huge chorus</span><span class="bpm">95–105 BPM</span><span class="tag">NEW</span></button>
+      <button class="pre" data-p="Lo-fi" data-bpm="80"><b>Lo-fi</b><span>Dusty drums, tape warmth, late-night study</span><span class="bpm">70–85 BPM</span></button>
+      <button class="pre" data-p="Synthwave" data-bpm="110"><b>Synthwave</b><span>80s synths, gated drums, neon</span><span class="bpm">100–118 BPM</span></button>
+      <button class="pre" data-p="Drum & Bass" data-bpm="174"><b>Drum &amp; Bass</b><span>Breakbeats, sub bass, liquid pads</span><span class="bpm">170–176 BPM</span></button>
+      <button class="pre" data-p="Acoustic" data-bpm="0"><b>Acoustic</b><span>Guitar, piano, strings — stripped back</span><span class="bpm">keeps tempo</span></button>
+      <button class="pre" data-p="Orchestral" data-bpm="0"><b>Orchestral</b><span>Cinematic strings and brass</span><span class="bpm">keeps tempo</span></button>
+      <button class="pre custom" data-p="Custom" data-bpm="0" data-toast="A text field opens: describe the style in your own words"><b>Describe it…</b><span>your own words</span></button>
+    </div>
+
+    <div class="opts">
+      <div>
+        <div class="lbl">Your voice</div>
+        <div class="seg" id="voice">
+          <button aria-pressed="true">Keep my voice<small>your real vocal, new music under it</small></button>
+          <button>Re-sing it<small>the AI sings your lyrics</small></button>
+          <button>Instrumental<small>no vocals</small></button>
+        </div>
+        <div class="note" id="voiceNote" style="margin-top:10px">Recommended. Your vocal is kept exactly; only the music is rebuilt. Tempo changes stretch it gently.</div>
+        <div class="lbl" style="margin-top:18px">Mood</div>
+        <div class="chips" id="moods"><button class="chip" aria-pressed="true">Emotional</button><button class="chip" aria-pressed="true">Chill</button><button class="chip">Euphoric</button><button class="chip">Dark</button><button class="chip">Dreamy</button><button class="chip">Late night</button></div>
+      </div>
+      <div>
+        <div class="lbl">How close to the original</div>
+        <div class="slider"><small>Reinvented</small><input type="range" id="close" min="30" max="80" value="50" step="5" aria-label="Closeness to original"><small>Faithful</small></div>
+        <div class="sval" id="closeV">Balanced — recognizable, clearly transformed</div>
+        <div class="lbl" style="margin-top:18px">Tempo</div>
+        <div class="seg" id="tempo">
+          <button>Keep<small id="tKeep">92 BPM</small></button>
+          <button aria-pressed="true">Match style<small id="tMatch">124 BPM</small></button>
+          <button data-toast="A BPM field opens">Custom<small>…</small></button>
+        </div>
+        <div class="tog"><div><b>More melodies</b><span>Add counter-melodies and arpeggios answering the vocal</span></div><button class="sw" role="switch" aria-checked="true" aria-label="More melodies"></button></div>
+        <div class="tog"><div><b>Studio quality</b><span>Slower render, more detail (about 3 min)</span></div><button class="sw" role="switch" aria-checked="false" aria-label="Studio quality"></button></div>
+      </div>
+    </div>
+
+    <div class="cta-bar">
+      <div class="sum" id="sum"><b>Deep House</b> · keep my voice · balanced · 124 BPM · emotional, chill</div>
+      <span class="est" id="est">about 1 min</span>
+      <button class="btn ghost sm" id="backCheck">Back</button>
+      <button class="btn primary" id="remixBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5v14l11-7z"/></svg>Remix it</button>
+    </div>
+  </div>
+
+  <!-- ---------- 4 render ---------- -->
+  <div class="state" id="s-render">
+    <div class="render">
+      <h1 id="rTitle">Remixing “Tu Hi Mera Sukoon”</h1>
+      <p class="sub" id="rSub">Deep House · keeping your voice. You'll get the original and the remix side by side.</p>
+      <div class="prog"><i id="prog"></i></div>
+      <div class="stg" id="rStages" style="margin-top:0;max-width:none">
+        <div class="st-row"><span class="dot"></span>Isolating your vocal<span class="tm"></span></div>
+        <div class="st-row"><span class="dot"></span>Building the new music around it<span class="tm"></span></div>
+        <div class="st-row"><span class="dot"></span>Placing your vocal back in<span class="tm"></span></div>
+        <div class="st-row"><span class="dot"></span>Mastering · loudness to −14 LUFS<span class="tm"></span></div>
+      </div>
+      <div class="actions" style="justify-content:space-between"><span class="est" id="rEl">0 s · usually about 60 s</span><button class="btn link" id="cancel">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- ---------- 5 result ---------- -->
+  <div class="state" id="s-result">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><h1 id="resTitle">Tu Hi Mera Sukoon · Deep House</h1><div class="tags" id="resTags"></div></div>
+      <div style="display:flex;gap:6px"><button class="btn ghost sm" id="tweak">Tweak</button><button class="btn ghost sm" id="another">Another style</button></div>
+    </div>
+    <div class="ab">
+      <div class="tk" data-k="orig"><div class="th"><span class="name">Original</span><span class="meta">92 BPM · F♯</span></div><div class="wave" data-w="orig"><canvas></canvas><div class="ph"></div></div>
+        <div class="tr"><button class="play" data-play="orig" aria-label="Play original"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="time" data-time="orig">0:00 / 0:30</span></div></div>
+      <div class="tk remix" data-k="remix"><div class="th"><span class="name">Remix</span><span class="meta" id="remixMeta">124 BPM · your voice</span></div><div class="wave" data-w="remix"><canvas></canvas><div class="ph"></div></div>
+        <div class="tr"><button class="play" data-play="remix" aria-label="Play remix"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="time" data-time="remix">0:00 / 0:30</span>
+          <span class="acts"><button class="btn ghost" data-toast="Kept in your Library">♥ Keep</button><button class="btn ghost" data-toast="Downloads WAV + MP3 in the real app">Download</button></span></div></div>
+    </div>
+    <div class="sync"><button class="btn ghost sm" id="abBtn">Switch A/B at the same spot</button><span>Tap while playing to compare the same moment.</span></div>
+    <div class="after"><span style="color:var(--ink-2);font-size:13px">Not there yet?</span><button class="btn ghost sm" id="closer" data-toast="Re-runs with the closeness slider one step more faithful">Closer to the original</button><button class="btn ghost sm" data-toast="Re-runs with a new seed">Another take</button><span class="spacer"></span><button class="btn link" id="newSong">New song</button></div>
+  </div>
+</main>
+
+<div class="player" id="player"><div class="np"><div class="art"></div><div><div class="t" id="npT">—</div><div class="s" id="npS"></div></div></div>
+  <div class="mid"><button class="play" id="npPlay" aria-label="Play or pause"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="tm" id="npCur">0:00</span><div class="bar" id="npBar"><i id="npFill"></i></div><span class="tm" id="npDur">0:30</span></div>
+  <div class="rt"><button class="btn link" id="npAB">A / B</button></div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="help"><div class="card">
+  <h3>What's real in this mock</h3>
+  <ul>
+    <li><b>The audio is real.</b> “Original” is the Hindi ballad Riff rendered in the spike; “Remix” is the actual deep-house cover the engine made from it (42 s render). Both are 30-second excerpts.</li>
+    <li><b>The analysis numbers are real</b> (tempo, key, stem energy split from Demucs on that track). The lyrics are the real lyrics, shown the way the transcription step returns them.</li>
+    <li><b>Timings are real</b> (~30 s analysis, ~60 s remix), compressed to a few seconds here.</li>
+    <li><b>Mocked:</b> uploading a file uses the example audio; Library/Create are placeholders; Download shows a toast.</li>
+  </ul>
+  <p>Things to judge: is “Keep my voice / Re-sing / Instrumental” the right first choice? Is one closeness slider enough, or do you want separate “how much the music changes” and “how much the vocal changes”? Are the desi presets named the way you'd say them?</p>
+  <button class="btn ghost sm" id="helpClose">Close</button></div></div>
+
+<script>
+(() => {
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const AUDIO={orig:"data:audio/mpeg;base64,__ORIG__", remix:"data:audio/mpeg;base64,__REMIX__"};
+const LYR_ROMAN=[[0,"Raat ki khamoshi mein tera naam likha"],[5,"Chaand ne dheere se mujhse kuch kaha"],[10,"Teri yaadon ka ye kaafila chalta rahe"],[15,"Dil ki galiyon mein tu yunhi basta rahe"],[22,"Tu hi mera sukoon, tu hi meri dua"],[27,"Tere bina ye dil ab kahin na ruka"],[32,"O piya, o piya, laut aa mere paas"],[37,"Tere bina adhoori hai har ek saans"],[46,"Barishon mein bheege wo lamhe puraane"],[51,"Aankhon mein tere hain sapne suhaane"],[56,"Jitni bhi dooriyan hon, dil ko yakeen hai"],[61,"Har raasta tere hi ghar ko jaata hai"],[70,"Tu hi mera sukoon, tu hi meri dua"],[75,"Tere bina ye dil ab kahin na ruka"],[80,"O piya, o piya, laut aa mere paas"],[85,"Tere bina adhoori hai har ek saans"],[96,"Hawaaon mein teri khushboo ghuli hai"],[101,"Jaise koi puraani dhun phir se chali hai"]];
+const LYR_NATIVE=[[0,"रात की ख़ामोशी में तेरा नाम लिखा"],[5,"चाँद ने धीरे से मुझसे कुछ कहा"],[10,"तेरी यादों का ये काफ़िला चलता रहे"],[15,"दिल की गलियों में तू यूँही बसता रहे"],[22,"तू ही मेरा सुकून, तू ही मेरी दुआ"],[27,"तेरे बिना ये दिल अब कहीं न रुका"],[32,"ओ पिया, ओ पिया, लौट आ मेरे पास"],[37,"तेरे बिना अधूरी है हर एक साँस"],[46,"बारिशों में भीगे वो लम्हे पुराने"],[51,"आँखों में तेरे हैं सपने सुहाने"],[56,"जितनी भी दूरियाँ हों, दिल को यक़ीन है"],[61,"हर रास्ता तेरे ही घर को जाता है"],[70,"तू ही मेरा सुकून, तू ही मेरी दुआ"],[75,"तेरे बिना ये दिल अब कहीं न रुका"],[80,"ओ पिया, ओ पिया, लौट आ मेरे पास"],[85,"तेरे बिना अधूरी है हर एक साँस"],[96,"हवाओं में तेरी ख़ुशबू घुली है"],[101,"जैसे कोई पुरानी धुन फिर से चली है"]];
+const EX={hindi:{title:"Tu Hi Mera Sukoon",file:"tu-hi-mera-sukoon.wav · 2:30 · 48 kHz stereo",bpm:92,key:"F♯ major",lang:"Hindi"},pop:{title:"Run With Me",file:"run-with-me.wav · 2:30 · 48 kHz stereo",bpm:118,key:"D major",lang:"English"},rock:{title:"We Don't Sleep",file:"we-dont-sleep.wav · 2:30 · 48 kHz stereo",bpm:128,key:"E minor",lang:"English"}};
+let song=EX.hindi, preset={name:"Deep House",bpm:124}, voiceMode=0;
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+let toastT; const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),2200);};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-toast]");if(b)toast(b.dataset.toast);});
+function show(id,crumb){$$(".state").forEach(s=>s.classList.toggle("on",s.id===id));$$("#crumbs span").forEach(c=>{const i=+c.dataset.c;c.className=i<crumb?"done":i===crumb?"on":"";});window.scrollTo({top:0});}
+
+/* 1 upload */
+const drop=$("#drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",()=>pick(EX.hindi,"your file (mock: plays the example audio)"));
+drop.addEventListener("click",()=>pick(EX.hindi,"your file (mock: plays the example audio)"));
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();drop.click();}});
+$$(".ex").forEach(b=>b.addEventListener("click",()=>pick(EX[b.dataset.ex])));
+function pick(s,note){ if(!$("#rights").checked){ toast("Please confirm it's your song (or you have the rights) first"); $("#rights").focus(); return; } song=s; if(note) toast("Using "+note); startAnalysis(); }
+
+/* 2 analysis */
+let anT=[];
+function startAnalysis(){
+  show("s-check",1); $("#checkTitle").textContent=`Reading “${song.title}”`; $("#anl").hidden=true; $("#checkActions").hidden=true; $("#anStages").hidden=false;
+  const rows=$$("#anStages .st-row"); rows.forEach(r=>{r.className="st-row";$(".tm",r).textContent="";$(".dot",r).textContent="";});
+  anT.forEach(clearTimeout); anT=[];
+  [[0,0,"1 s"],[1,600,"18 s"],[2,2600,"3 s"],[3,3400,"9 s"]].forEach(([i,at,l])=>anT.push(setTimeout(()=>{rows.forEach((r,j)=>{if(j<i){r.className="st-row done";$(".dot",r).textContent="✓";}});rows[i].className="st-row cur";$(".tm",rows[i]).textContent=l;},at)));
+  anT.push(setTimeout(()=>{rows.forEach(r=>{r.className="st-row done";$(".dot",r).textContent="✓";}); $("#anStages").hidden=true; fillAnalysis(); },4600));
+}
+function fillAnalysis(){
+  $("#checkTitle").textContent=`Here's what we heard in “${song.title}”`; $("#checkSub").textContent="Check the split and the lyrics, fix anything, then pick a style.";
+  $("#fName").textContent=song.title; $("#fMeta").textContent=song.file; $$(".facts .v")[0].innerHTML=`${song.bpm} <small>BPM</small>`; $$(".facts .v")[1].textContent=song.key;
+  $("#tKeep").textContent=`${song.bpm} BPM`;
+  $("#anl").hidden=false; $("#checkActions").hidden=false; renderLyrics(); drawWave("orig",$("#wOrig canvas")); wireWave($("#wOrig"),"orig");
+  $("#player").classList.add("on"); $("#npT").textContent=song.title; $("#npS").textContent="Original";
+}
+function renderLyrics(){ const roman=$("#script button[aria-pressed=true]").textContent==="Roman"; const L=(song===EX.hindi)?(roman?LYR_ROMAN:LYR_NATIVE):LYR_ROMAN; $("#lyr").innerHTML=L.map(([t,l])=>`<div><span class="ts">${fmt(t)}</span>${l}</div>`).join(""); }
+$("#script").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$$("#script button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderLyrics();});
+$("#stems").addEventListener("click",e=>{const b=e.target.closest(".stem");if(!b)return;const on=b.getAttribute("aria-pressed")!=="true";$$("#stems .stem").forEach(x=>x.setAttribute("aria-pressed",false));b.setAttribute("aria-pressed",on);toast(on?`Soloing ${b.textContent.trim().split(" ")[0]} (mock: plays the mix)`:"Back to the full mix");});
+$("#toStyle").addEventListener("click",()=>{show("s-style",2);updateSum();});
+$("#backUp").addEventListener("click",()=>{stopAudio();show("s-upload",0);});
+
+/* 3 style */
+$("#presets").addEventListener("click",e=>{const b=e.target.closest(".pre");if(!b||b.dataset.toast)return;$$("#presets .pre").forEach(x=>x.setAttribute("aria-pressed",x===b));preset={name:b.dataset.p,bpm:+b.dataset.bpm};$("#tMatch").textContent=preset.bpm?`${preset.bpm} BPM`:`${song.bpm} BPM`;updateSum();});
+$("#voice").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$$("#voice button").forEach((x,i)=>{x.setAttribute("aria-pressed",x===b);if(x===b)voiceMode=i;});
+  $("#voiceNote").textContent=["Recommended. Your vocal is kept exactly; only the music is rebuilt. Tempo changes stretch it gently.","The AI sings your transcribed lyrics in a new voice that fits the style. Fix the lyrics on the previous step if anything's off.","Music only — great for a beat or a backing track."][voiceMode]; updateSum();});
+$("#moods").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");updateSum();});
+const closeLabels=v=>v<=35?"Reinvented — a new song that remembers yours":v<=45?"Loose — the melody survives, the rest is new":v<=55?"Balanced — recognizable, clearly transformed":v<=65?"Close — same feel, new instruments":"Faithful — subtle restyle";
+$("#close").addEventListener("input",e=>{$("#closeV").textContent=closeLabels(+e.target.value);updateSum();});
+$("#tempo").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.toast)return;$$("#tempo button").forEach(x=>x.setAttribute("aria-pressed",x===b));updateSum();});
+$$(".sw").forEach(s=>s.addEventListener("click",()=>{s.setAttribute("aria-checked",s.getAttribute("aria-checked")!=="true");$("#est").textContent=$$(".sw")[1].getAttribute("aria-checked")==="true"?"about 3 min":"about 1 min";}));
+function tempoNow(){const t=$("#tempo button[aria-pressed=true]");return t&&t.textContent.startsWith("Keep")?song.bpm:(preset.bpm||song.bpm);}
+function updateSum(){const v=["keep my voice","re-sing it","instrumental"][voiceMode];const c=closeLabels(+$("#close").value).split(" —")[0].toLowerCase();const m=$$("#moods .chip[aria-pressed=true]").map(x=>x.textContent.toLowerCase()).join(", ");$("#sum").innerHTML=`<b>${preset.name}</b> · ${v} · ${c} · ${tempoNow()} BPM${m?" · "+m:""}`;}
+$("#backCheck").addEventListener("click",()=>show("s-check",1));
+
+/* 4 render */
+let rT=[];
+$("#remixBtn").addEventListener("click",startRender);
+function startRender(){
+  show("s-render",3); stopAudio(); $("#rTitle").textContent=`Remixing “${song.title}”`; $("#rSub").textContent=`${preset.name} · ${["keeping your voice","re-singing your lyrics","instrumental"][voiceMode]}. You'll get the original and the remix side by side.`;
+  const rows=$$("#rStages .st-row"); rows.forEach(r=>{r.className="st-row";$(".tm",r).textContent="";$(".dot",r).textContent="";});
+  rows[0].firstChild.nextSibling.textContent = voiceMode===0?"Isolating your vocal":voiceMode===1?"Reading your lyrics":"Dropping the vocal"; rows[2].firstChild.nextSibling.textContent = voiceMode===0?"Placing your vocal back in":voiceMode===1?"Singing your lyrics":"Balancing the mix";
+  rT.forEach(t=>{clearTimeout(t);clearInterval(t);}); rT=[]; const t0=Date.now();
+  const tick=setInterval(()=>{const s=Math.min(60,Math.round((Date.now()-t0)/7000*60));$("#rEl").textContent=`${s} s · usually about 60 s`;$("#prog").style.width=Math.min(92,s/60*100)+"%";},120); rT.push(tick);
+  [[0,0,"4 s"],[1,900,"42 s"],[2,5200,"2 s"],[3,6100,"3 s"]].forEach(([i,at,l])=>rT.push(setTimeout(()=>{rows.forEach((r,j)=>{if(j<i){r.className="st-row done";$(".dot",r).textContent="✓";}});rows[i].className="st-row cur";$(".tm",rows[i]).textContent=l;},at)));
+  rT.push(setTimeout(()=>{clearInterval(tick);$("#prog").style.width="100%";rows.forEach(r=>{r.className="st-row done";$(".dot",r).textContent="✓";});setTimeout(showResult,350);},7000));
+}
+$("#cancel").addEventListener("click",()=>{rT.forEach(t=>{clearTimeout(t);clearInterval(t);});toast("Cancelled — nothing was spent");show("s-style",2);});
+
+/* 5 result + audio */
+const audio=new Audio(); let cur=null;
+function showResult(){
+  show("s-result",3); $("#resTitle").textContent=`${song.title} · ${preset.name}`; $("#remixMeta").textContent=`${tempoNow()} BPM · ${["your voice","re-sung","instrumental"][voiceMode]}`;
+  $("#resTags").innerHTML=[preset.name,closeLabels(+$("#close").value).split(" —")[0],`${song.bpm} → ${tempoNow()} BPM`,...$$("#moods .chip[aria-pressed=true]").map(x=>x.textContent),"turbo · 42 s"].map(t=>`<span>${t}</span>`).join("");
+  $$(".ab .wave").forEach(w=>{drawWave(w.dataset.w,$("canvas",w));wireWave(w,w.dataset.w);});
+  $("#player").classList.add("on"); $("#npT").textContent=`${song.title} · ${preset.name}`; $("#npS").textContent="Press play on the remix";
+}
+$("#tweak").addEventListener("click",()=>show("s-style",2)); $("#another").addEventListener("click",()=>show("s-style",2)); $("#newSong").addEventListener("click",()=>{stopAudio();show("s-upload",0);});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-play]");if(b)toggle(b.dataset.play);});
+function wireWave(w,k){ if(w.dataset.wired)return; w.dataset.wired=1; w.addEventListener("click",e=>{const r=w.getBoundingClientRect();const p=(e.clientX-r.left)/r.width;if(cur!==k)play(k);audio.currentTime=p*(audio.duration||30);}); }
+const waves={};
+async function drawWave(k,canvas){ if(!canvas)return; const dpr=window.devicePixelRatio||1,W=canvas.clientWidth*dpr,H=canvas.clientHeight*dpr;canvas.width=W;canvas.height=H;const ctx=canvas.getContext("2d");
+  let p=waves[k]; if(!p){ try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const bin=atob(AUDIO[k].split(",")[1]); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i); const ab=await ac.decodeAudioData(buf.buffer); const d=ab.getChannelData(0),N=160,blk=Math.floor(d.length/N); p=[]; for(let i=0;i<N;i++){let m=0;for(let j=0;j<blk;j+=4){const v=Math.abs(d[i*blk+j]);if(v>m)m=v;}p.push(m);} const mx=Math.max(...p)||1;p=p.map(x=>x/mx);ac.close(); }catch(e){ p=Array.from({length:160},(_,i)=>0.35+0.6*Math.abs(Math.sin(i*0.37)*Math.cos(i*0.11))); } waves[k]=p; }
+  ctx.clearRect(0,0,W,H); const bw=W/p.length; p.forEach((v,i)=>{const h=Math.max(2*dpr,v*H*0.86);ctx.fillStyle=k==="remix"?"rgba(255,138,102,.75)":"rgba(238,240,244,.55)";ctx.fillRect(i*bw+bw*0.2,(H-h)/2,bw*0.6,h);}); }
+function play(k){ if(cur!==k){audio.src=AUDIO[k];cur=k;} audio.play(); $$(".tk").forEach(t=>t.classList.toggle("playing",t.dataset.k===k)); $("#npS").textContent=k==="orig"?"Original":`Remix · ${preset.name}`; icons(true); }
+function toggle(k){ if(cur===k&&!audio.paused){audio.pause();icons(false);} else play(k); }
+function stopAudio(){ audio.pause(); audio.currentTime=0; cur=null; icons(false); $("#player").classList.remove("on"); }
+function icons(playing){ const pl='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg>',pa='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>'; $$("[data-play]").forEach(b=>b.innerHTML=(playing&&b.dataset.play===cur)?pa:pl); $("#npPlay").innerHTML=playing?pa:pl; }
+audio.addEventListener("timeupdate",()=>{const d=audio.duration||30,c=audio.currentTime,p=c/d;$("#npCur").textContent=fmt(c);$("#npDur").textContent=fmt(d);$("#npFill").style.width=(p*100)+"%";
+  $$(".wave").forEach(w=>{const k=w.dataset.w||(w.id==="wOrig"?"orig":null);$(".ph",w).style.width=(k===cur)?(p*100)+"%":"0";}); $$("[data-time]").forEach(t=>t.textContent=(t.dataset.time===cur)?`${fmt(c)} / ${fmt(d)}`:`0:00 / ${fmt(d)}`);});
+audio.addEventListener("ended",()=>icons(false));
+$("#npPlay").addEventListener("click",()=>{ if(!cur){play($("#s-result").classList.contains("on")?"remix":"orig");return;} toggle(cur); });
+$("#npBar").addEventListener("click",e=>{const r=e.currentTarget.getBoundingClientRect();audio.currentTime=((e.clientX-r.left)/r.width)*(audio.duration||30);});
+const ab=()=>{ if(!$("#s-result").classList.contains("on")){toast("A/B is available once the remix is done");return;} const t=audio.currentTime; play(cur==="orig"?"remix":"orig"); audio.currentTime=t; toast(`Now hearing the ${cur==="orig"?"original":"remix"} at the same spot`); };
+$("#npAB").addEventListener("click",ab); $("#abBtn").addEventListener("click",ab);
+window.addEventListener("resize",()=>$$(".wave canvas").forEach(c=>{const w=c.parentElement;drawWave(w.dataset.w||(w.id==="wOrig"?"orig":"orig"),c);}));
+$("#helpBtn").addEventListener("click",()=>$("#help").classList.add("on")); $("#helpClose").addEventListener("click",()=>$("#help").classList.remove("on")); $("#help").addEventListener("click",e=>{if(e.target.id==="help")e.currentTarget.classList.remove("on");});
+})();
+</script>

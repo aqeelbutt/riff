@@ -159,3 +159,30 @@ Engine stayed up for all 11 renders plus the stems run (the stems tool ran only 
 ## Presets this adds to V1
 
 Create: **Jazz-rap / jazz-hop**, **Bollywood ballad**, **Punjabi pop / bhangra**, **Sufi pop / qawwali-inspired**, **Alt-rock** (plus a language picker: English, Hindi, Urdu, Punjabi, Bengali, …, and free text). Remix targets: **Deep house**, **Desi deep house** (tabla layer), **Sufi house** (harmonium drone), **Jazz-rap layout**, plus the originals. Every preset = caption template + default strength + target BPM; all live in one data file, no engine changes.
+
+---
+
+# Phase 0d — a real upload: keep-my-voice remix + lyric extraction
+
+The user's own Urdu song (112 s, ~126 BPM, mastered at −11.6 LUFS) exposed two things the synthetic tests couldn't.
+
+1. **A cover with no lyrics comes back INSTRUMENTAL.** The API's `is_instrumental(lyrics)` treats empty lyrics as "no vocals", so the first three remixes of the upload had music and no voice. Every earlier cover had lyrics attached, which is why it never showed.
+2. **`mlx-audio-separator` is broken** — its htdemucs stems were ~35 dB quiet and did not sum back to the mix (residual energy 0.90 of the source), and Whisper on those stems hallucinated "موسیقی" (music) four times. **Meta's reference `demucs` on MPS** separates the same song in 39 s with a residual of 0.018 and a vocal at −16 dB RMS. The stems venv now uses `demucs`; the MLX package stays only as a warning in CLAUDE.md.
+
+**What now works, end to end, on the upload (`spike/run_vocal_keep_user.sh`):**
+
+| Step | Tool | Time |
+|---|---|---:|
+| Stems (vocals/drums/bass/other) | `demucs htdemucs_ft` on MPS | 39 s |
+| Lyrics from the vocal stem | `mlx-whisper` large-v3, `language=ur` | **7 s → 14 lines of real Urdu** |
+| Tempo stretch vocal + instrumental (126 → 118 / 108) | `pyrubberband` | ~5 s |
+| New bed: ACE-Step **cover of the instrumental only** (no lyrics ⇒ instrumental) | turbo, strength 0.5, explicit `bpm` | 40–54 s |
+| Mix the real vocal back over the bed, loudness to −14 LUFS, true-peak safe | `pyloudnorm` | ~2 s |
+| **Total per remix** | `spike/vocal_keep.py` | **42–58 s** |
+
+Three variants shipped to the user: emotional deep house at 118, chill at 108, and emotional at the native 126 (no stretch, vocal untouched). Measured tempos 117/108/126, mixes at −14 LUFS, beds structurally aligned with the source instrumental (onset-envelope lag ≈ 0).
+
+**Design consequences (now in the Remix mock):**
+- The first choice on the Style step is **Keep my voice / Re-sing it / Instrumental**, defaulting to *Keep my voice* for uploads. "Re-sing" needs lyrics, which the analysis step now extracts automatically (Suno does this too) and shows for correction.
+- Lyric transcription is a first-class analysis stage ("Listening for the lyrics"), on the vocal stem, language-aware. Claude then romanizes non-Latin scripts per the user's rule.
+- Stem separation, Whisper, and the engine share **one GPU lane**, serialized.
