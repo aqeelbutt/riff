@@ -1,0 +1,170 @@
+<title>Riff Library</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#0E1014;--bg-2:#141821;--sur:#171B24;--sur-2:#1E2330;--sur-3:#262C3A;--line:#2A3040;--line-2:#363D4E;--ink:#EEF0F4;--ink-2:#A6ADBB;--ink-3:#6E7684;--acc:#FF6A3D;--acc-2:#FF8A66;--acc-soft:rgba(255,106,61,.14);--mint:#5EE6B0;--mint-soft:rgba(94,230,176,.14);--vio:#A78BFA;--vio-soft:rgba(167,139,250,.14);--amber:#F5B640;--sans:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--disp:"Bricolage Grotesque","IBM Plex Sans",sans-serif;--r:12px;--r-sm:8px;--r-pill:999px}
+*{box-sizing:border-box}html{color-scheme:dark}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+input{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;height:56px;padding:0 20px;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.wordmark{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}.wordmark i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--acc);transform:rotate(45deg);box-shadow:0 0 0 3px var(--acc-soft)}
+.nav{display:flex;gap:4px}.nav button{padding:6px 12px;border-radius:var(--r-pill);color:var(--ink-2);font-weight:500}.nav button[aria-current="page"]{background:var(--sur-2);color:var(--ink)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:12px}.engine{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);padding:5px 10px;border:1px solid var(--line);border-radius:var(--r-pill)}.engine b{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.help{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);color:var(--ink-2);font-family:var(--mono)}
+.wrap{max-width:1100px;margin:0 auto;padding:26px 24px 120px}
+h1{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;margin:0;line-height:1.05}
+.sub{color:var(--ink-2);margin:6px 0 0;font-size:14px}
+.state{display:none}.state.on{display:block}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0 16px}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--sur);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px}
+.search input{flex:1;background:none;border:0;outline:none;color:var(--ink)}.search input::placeholder{color:var(--ink-3)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{padding:6px 11px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--sur);color:var(--ink-2);font-size:13px}.chip[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--ink)}
+.sort{display:flex;gap:2px;background:var(--sur);border:1px solid var(--line);border-radius:var(--r-sm);padding:3px}.sort button{padding:5px 10px;border-radius:5px;color:var(--ink-2);font-size:12.5px}.sort button[aria-pressed="true"]{background:var(--sur-3);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.song{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--sur);text-align:left;transition:border-color .12s,transform .12s;position:relative}
+.song:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.song .art{height:120px;border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:10px}
+.song .art .pl{width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;opacity:0;transition:opacity .12s;box-shadow:0 6px 18px -6px rgba(0,0,0,.6)}
+.song:hover .art .pl,.song.playing .art .pl{opacity:1}
+.song .art .st{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:rgba(14,16,20,.7);color:var(--ink-2)}
+.song .art .st.ready{color:var(--mint)}.song .art .st.rendering{color:var(--amber)}.song .art .st.failed{color:var(--acc)}
+.song .art .kept{position:absolute;top:8px;right:10px;color:var(--acc);font-size:15px}
+.song b{font-family:var(--disp);font-weight:700;font-size:17px;display:block;line-height:1.2}
+.song .m{font-size:12.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.song .f{display:flex;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:auto}
+.empty{margin:10vh auto 0;max-width:460px;text-align:center;color:var(--ink-2)}
+/* detail */
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);margin-bottom:14px;font-size:13px}.back:hover{color:var(--ink)}
+.head{display:grid;grid-template-columns:120px 1fr auto;gap:18px;align-items:end;margin-bottom:22px}
+@media (max-width:700px){.head{grid-template-columns:1fr}}
+.head .art{height:120px;border-radius:14px}
+.head h1[contenteditable]{outline:none;border-radius:6px;padding:0 4px;margin:0 -4px}.head h1[contenteditable]:focus{background:var(--sur-2)}
+.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.facts span{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;background:var(--sur-2);color:var(--ink-2)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:var(--r-sm);font-weight:600;font-size:13.5px;white-space:nowrap}
+.btn.primary{background:var(--acc);color:#1A0C06}.btn.primary:hover{background:var(--acc-2)}
+.btn.ghost{background:var(--sur-2);color:var(--ink);border:1px solid var(--line)}.btn.ghost:hover{border-color:var(--line-2)}
+.btn.danger{color:var(--acc);border:1px solid var(--line)}.btn.link{color:var(--ink-2);padding:6px 8px}
+.two{display:grid;grid-template-columns:1fr 340px;gap:16px}@media (max-width:860px){.two{grid-template-columns:1fr}}
+.card{background:var(--sur);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h3{font-family:var(--disp);font-weight:700;font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.card h3 .n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.take{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.take:last-child{border-bottom:0}
+.take .play{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}.take.playing .play{background:var(--acc);color:#1A0C06}
+.take .w{position:relative;height:44px;background:var(--bg-2);border-radius:6px;overflow:hidden;cursor:pointer}.take .w canvas{width:100%;height:100%;display:block}.take .w .ph{position:absolute;top:0;bottom:0;left:0;width:0;background:rgba(255,106,61,.16);border-right:1.5px solid var(--acc)}
+.take .name{font-family:var(--disp);font-weight:700;font-size:14px}.take .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.take .r{display:flex;gap:4px;align-items:center}.take .r button{padding:6px 8px;border-radius:6px;color:var(--ink-2);font-size:12.5px}.take .r button:hover{background:var(--sur-3);color:var(--ink)}.take .r .fav[aria-pressed="true"]{color:var(--acc)}
+.batch{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 4px}
+.lyr{white-space:pre-wrap;font-size:14px;line-height:1.6;max-height:520px;overflow:auto}.lyr .tag{font-family:var(--mono);font-size:11px;color:var(--vio);display:block;margin-top:10px}.lyr .tag:first-child{margin-top:0}
+.player{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;height:76px;padding:0 20px;background:color-mix(in srgb,var(--sur) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);transform:translateY(100%);transition:transform .25s}
+.player.on{transform:none}.player .np{display:flex;align-items:center;gap:12px;min-width:0}.player .art{width:44px;height:44px;border-radius:8px;flex:none}.player .np .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player .np .s{font-size:12px;color:var(--ink-2)}
+.player .mid{display:flex;align-items:center;gap:12px}.player .bar{flex:1;height:4px;background:var(--sur-3);border-radius:2px;position:relative;cursor:pointer}.player .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:2px;width:0}.player .tm{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.player .pl{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}.player .rt{display:flex;gap:8px}
+@media (max-width:860px){.player{grid-template-columns:auto 1fr;gap:10px}.player .rt{display:none}}
+.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,10px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r-pill);font-weight:500;font-size:13.5px;z-index:40;transition:.18s;pointer-events:none}.toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;place-items:center;padding:20px}.modal.on{display:grid}.modal .card{max-width:460px;width:100%;padding:22px 24px}
+.modal h3{font-size:20px}.modal p{color:var(--ink-2);font-size:13.5px}.modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top"><div class="wordmark"><i></i>Riff</div><nav class="nav"><button data-toast="Create is live in the app">Create</button><button aria-current="page">Library</button><button data-toast="Remix is Phase 4">Remix</button></nav>
+<div class="right"><div class="engine"><b></b>engine · turbo</div><button class="help" id="helpBtn" aria-label="About this mock">?</button></div></header>
+
+<main class="wrap">
+  <!-- library -->
+  <div class="state on" id="s-lib">
+    <h1>Library</h1><p class="sub">Everything you've made, on this Mac. Play from here; keep the takes you love.</p>
+    <div class="toolbar">
+      <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Search titles, styles, lyrics…" aria-label="Search"></label>
+      <div class="chips" id="filters"><button class="chip" aria-pressed="true" data-f="all">All</button><button class="chip" data-f="kept">♥ Kept</button><button class="chip" data-f="ready">Ready</button><button class="chip" data-f="rendering">Rendering</button></div>
+      <div class="sort" id="sort"><button aria-pressed="true" data-s="new">Newest</button><button data-s="title">Title</button><button data-s="played">Recently played</button></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Nothing matches. Try another word, or clear the filter.</div>
+  </div>
+
+  <!-- song detail -->
+  <div class="state" id="s-song">
+    <button class="back" id="back">← Library</button>
+    <div class="head">
+      <div class="art" id="dArt"></div>
+      <div><h1 id="dTitle" contenteditable="true" spellcheck="false" aria-label="Song title"></h1><div class="facts" id="dFacts"></div></div>
+      <div class="acts"><button class="btn primary" id="dPlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg>Play</button><button class="btn ghost" data-toast="Queues 2 more takes with new seeds (same lyrics)">2 more takes</button><button class="btn ghost" data-toast="Opens Remix with this take as the source">Remix</button><button class="btn danger" id="dDel">Delete</button></div>
+    </div>
+    <div class="two">
+      <div class="card"><h3>Takes <span class="n" id="dTakesN"></span></h3><div id="dTakes"></div></div>
+      <div class="card"><h3>Lyrics <span class="n" id="dLang"></span></h3><div class="lyr" id="dLyr"></div></div>
+    </div>
+  </div>
+</main>
+
+<div class="player" id="player"><div class="np"><div class="art" id="npArt"></div><div><div class="t" id="npT">—</div><div class="s" id="npS"></div></div></div>
+  <div class="mid"><button class="pl" id="npPlay" aria-label="Play or pause"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="tm" id="npCur">0:00</span><div class="bar" id="npBar"><i id="npFill"></i></div><span class="tm" id="npDur">0:30</span></div>
+  <div class="rt"><button class="btn link" id="npAB">A / B</button><button class="btn link" id="npNext">Next song ›</button></div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="confirm"><div class="card"><h3>Delete “<span id="cName"></span>”?</h3><p>Removes the song, its lyrics and every take from this Mac. There's no undo.</p><div class="row"><button class="btn ghost" id="cNo">Keep it</button><button class="btn primary" id="cYes" style="background:var(--acc)">Delete</button></div></div></div>
+<div class="modal" id="help"><div class="card"><h3>What's real in this mock</h3><p>The three songs and their audio are real spike renders (30-second excerpts). Search, filters, sort, keep, A/B and the cross-page player work; delete and rename are simulated. Things to judge: is a grid the right shape for the library, or a list? Should the song page lead with the takes (as here) or the lyrics? Is “Kept” the right word for favorites?</p><div class="row"><button class="btn ghost" id="helpClose">Close</button></div></div></div>
+
+<script>
+(() => {
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const AUDIO={pa:"data:audio/mpeg;base64,__POP_A__",pb:"data:audio/mpeg;base64,__POP_B__",hi:"data:audio/mpeg;base64,__HINDI__",dh:"data:audio/mpeg;base64,__HINDI_DH__"};
+const LYR_POP="[Intro]\nOoh, ooh\n\n[Verse 1]\nStreetlights flicker on the boulevard\nWindows down, we're driving way too far\nEvery song we know, we sing it wrong\nDoesn't matter, tonight we belong\n\n[Chorus]\nSo run with me till the morning breaks\nTake the long way, make the same mistakes\nWe're gold in the dark, we're wide awake\nRun with me, run with me tonight";
+const LYR_HI="[Verse 1]\nRaat ki khamoshi mein tera naam likha\nChaand ne dheere se mujhse kuch kaha\nTeri yaadon ka ye kaafila chalta rahe\nDil ki galiyon mein tu yunhi basta rahe\n\n[Chorus]\nTu hi mera sukoon, tu hi meri dua\nTere bina ye dil ab kahin na ruka\nO piya, o piya, laut aa mere paas\nTere bina adhoori hai har ek saans";
+let SONGS=[
+ {id:"s1",title:"Run With Me",style:"Modern pop · synth bass, bright guitars, female lead",bpm:118,key:"D major",dur:150,lang:"English",status:"ready",created:"2026-09-06T14:30:00Z",played:3,takes:[{k:"pa",name:"Take A",seed:"2643125691",kept:true,batch:"today · 14:31"},{k:"pb",name:"Take B",seed:"181932275",kept:false,batch:"today · 14:31"}],lyrics:LYR_POP,art:"linear-gradient(135deg,#FF6A3D,#7a2a12)"},
+ {id:"s2",title:"Tu Hi Mera Sukoon",style:"Bollywood ballad · sitar, tabla, harmonium, male vocal",bpm:92,key:"F♯ major",dur:150,lang:"Hindi",status:"ready",created:"2026-09-06T15:00:00Z",played:1,takes:[{k:"hi",name:"Take A",seed:"2002",kept:true,batch:"today · 15:01"},{k:"dh",name:"Desi deep house remix",seed:"3025649267",kept:false,batch:"remix · 15:02"}],lyrics:LYR_HI,art:"linear-gradient(135deg,#7C3AED,#EC4899)"},
+ {id:"s3",title:"Needle Talk",style:"Boom-bap · dusty break, chopped soul samples, scratches",bpm:92,key:"A minor",dur:150,lang:"English",status:"ready",created:"2026-09-06T16:05:00Z",played:0,takes:[{k:"pa",name:"Take A",seed:"2651951298",kept:false,batch:"today · 16:06"},{k:"pb",name:"Take B",seed:"3675932955",kept:false,batch:"today · 16:06"}],lyrics:"[Verse 1]\nConcrete stairwell, notebook full of scars\nWrote my first sixteen on the back of a bus card\n\n[Hook]\nBoom, bap — that's the pulse of the city\nHead nod, no gimmicks, keep it gritty",art:"linear-gradient(135deg,#06B6D4,#3B82F6)"},
+ {id:"s4",title:"We Don't Sleep",style:"Alt-rock · distorted guitars, gritty male vocal",bpm:128,key:"E minor",dur:150,lang:"English",status:"rendering",created:"2026-09-06T16:20:00Z",played:0,takes:[],lyrics:"[Verse 1]\nEngine running hot on a dead-end street",art:"linear-gradient(135deg,#F59E0B,#EF4444)"},
+];
+let filter="all",sort="new",q="",cur={song:null,take:null};
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+let toastT;const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),2200);};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-toast]");if(b)toast(b.dataset.toast);});
+function view(){ let rows=SONGS.filter(s=>filter==="all"||(filter==="kept"?s.takes.some(t=>t.kept):s.status===filter));
+  if(q) rows=rows.filter(s=>(s.title+" "+s.style+" "+s.lyrics).toLowerCase().includes(q.toLowerCase()));
+  rows=[...rows].sort((a,b)=>sort==="title"?a.title.localeCompare(b.title):sort==="played"?b.played-a.played:b.created.localeCompare(a.created)); return rows; }
+function renderGrid(){ const rows=view(); $("#empty").hidden=rows.length>0;
+  $("#grid").innerHTML=rows.map(s=>`<button class="song ${cur.song===s.id?"playing":""}" data-id="${s.id}"><div class="art" style="background:${s.art}"><span class="st ${s.status}">${s.status==="ready"?`${s.takes.length} take${s.takes.length===1?"":"s"}`:s.status}</span>${s.takes.some(t=>t.kept)?'<span class="kept">♥</span>':""}<span class="pl" data-play="${s.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></span></div><b>${s.title}</b><span class="m">${s.style}</span><span class="f"><span>${s.bpm} BPM</span><span>${s.key}</span><span>${fmt(s.dur)}</span><span style="margin-left:auto">${s.lang}</span></span></button>`).join(""); }
+$("#grid").addEventListener("click",e=>{const p=e.target.closest("[data-play]"); const card=e.target.closest(".song"); if(!card)return; const s=SONGS.find(x=>x.id===card.dataset.id);
+  if(p){e.stopPropagation(); if(s.takes.length) play(s,s.takes.find(t=>t.kept)||s.takes[0]); else toast("Still rendering"); return;} openSong(s);});
+$("#q").addEventListener("input",e=>{q=e.target.value;renderGrid();});
+$("#filters").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;$$("#filters .chip").forEach(x=>x.setAttribute("aria-pressed",x===b));filter=b.dataset.f;renderGrid();});
+$("#sort").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$$("#sort button").forEach(x=>x.setAttribute("aria-pressed",x===b));sort=b.dataset.s;renderGrid();});
+/* detail */
+function openSong(s){ $$(".state").forEach(x=>x.classList.remove("on")); $("#s-song").classList.add("on"); $("#s-song").dataset.id=s.id; window.scrollTo({top:0});
+  $("#dArt").style.background=s.art; $("#dTitle").textContent=s.title; $("#dFacts").innerHTML=[s.style.split(" ·")[0],`${s.bpm} BPM`,s.key,fmt(s.dur),s.lang,`made ${new Date(s.created).toLocaleDateString()}`].map(t=>`<span>${t}</span>`).join("");
+  $("#dTakesN").textContent=s.takes.length?`${s.takes.length} · ${s.takes.filter(t=>t.kept).length} kept`:"rendering…"; $("#dLang").textContent=s.lang;
+  $("#dLyr").innerHTML=s.lyrics.split("\n").map(l=>l.match(/^\[.*\]$/)?`<span class="tag">${l}</span>`:l).join("\n").replace(/\n\n/g,"\n");
+  let lastBatch=null; $("#dTakes").innerHTML=s.takes.length?s.takes.map((t,i)=>{const b=t.batch!==lastBatch?`<div class="batch">${t.batch}</div>`:"";lastBatch=t.batch;return b+`<div class="take ${cur.take===t.k&&cur.song===s.id?"playing":""}" data-i="${i}"><button class="play" aria-label="Play ${t.name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="name">${t.name}</span><span class="meta">seed ${t.seed}</span></div><div class="w" data-w="${t.k}"><canvas></canvas><div class="ph"></div></div></div><div class="r"><button class="fav" aria-pressed="${t.kept}" aria-label="Keep">♥</button><button data-toast="Downloads WAV + MP3 in the app">↓</button><button data-toast="Sets this take as the song's default">★</button></div></div>`;}).join(""):'<p style="color:var(--ink-2)">Rendering on your Mac — about a minute.</p>';
+  $$("#dTakes .w").forEach(w=>drawWave(w.dataset.w,$("canvas",w)));
+}
+$("#back").addEventListener("click",()=>{$$(".state").forEach(x=>x.classList.remove("on"));$("#s-lib").classList.add("on");renderGrid();});
+$("#dTakes").addEventListener("click",e=>{const s=SONGS.find(x=>x.id===$("#s-song").dataset.id); const row=e.target.closest(".take"); if(!row)return; const t=s.takes[+row.dataset.i];
+  if(e.target.closest(".play")){ if(cur.take===t.k&&cur.song===s.id&&!audio.paused){audio.pause();icons(false);} else play(s,t); return;}
+  if(e.target.closest(".fav")){ t.kept=!t.kept; e.target.closest(".fav").setAttribute("aria-pressed",t.kept); toast(t.kept?"Kept":"Unkept"); $("#dTakesN").textContent=`${s.takes.length} · ${s.takes.filter(x=>x.kept).length} kept`; return;}
+  const w=e.target.closest(".w"); if(w){const r=w.getBoundingClientRect(); if(!(cur.take===t.k&&cur.song===s.id)) play(s,t); audio.currentTime=((e.clientX-r.left)/r.width)*(audio.duration||30);} });
+$("#dPlay").addEventListener("click",()=>{const s=SONGS.find(x=>x.id===$("#s-song").dataset.id); if(s.takes.length) play(s,s.takes.find(t=>t.kept)||s.takes[0]); else toast("Still rendering");});
+$("#dTitle").addEventListener("blur",e=>{const s=SONGS.find(x=>x.id===$("#s-song").dataset.id); const v=e.target.textContent.trim(); if(v&&v!==s.title){s.title=v;toast("Renamed");}});
+$("#dDel").addEventListener("click",()=>{const s=SONGS.find(x=>x.id===$("#s-song").dataset.id); $("#cName").textContent=s.title; $("#confirm").classList.add("on");});
+$("#cNo").addEventListener("click",()=>$("#confirm").classList.remove("on"));
+$("#cYes").addEventListener("click",()=>{const id=$("#s-song").dataset.id; SONGS=SONGS.filter(x=>x.id!==id); if(cur.song===id) stop(); $("#confirm").classList.remove("on"); toast("Deleted"); $("#back").click();});
+/* player */
+const audio=new Audio(); const waves={};
+async function drawWave(k,canvas){ if(!canvas)return; const dpr=window.devicePixelRatio||1,W=canvas.clientWidth*dpr,H=canvas.clientHeight*dpr;canvas.width=W;canvas.height=H;const ctx=canvas.getContext("2d");
+  let p=waves[k]; if(!p){ try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const bin=atob(AUDIO[k].split(",")[1]); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i); const ab=await ac.decodeAudioData(buf.buffer); const d=ab.getChannelData(0),N=140,blk=Math.floor(d.length/N); p=[]; for(let i=0;i<N;i++){let m=0;for(let j=0;j<blk;j+=4){const v=Math.abs(d[i*blk+j]);if(v>m)m=v;}p.push(m);} const mx=Math.max(...p)||1;p=p.map(x=>x/mx);ac.close(); }catch(e){ p=Array.from({length:140},(_,i)=>0.35+0.6*Math.abs(Math.sin(i*0.37)*Math.cos(i*0.11))); } waves[k]=p; }
+  ctx.clearRect(0,0,W,H); const bw=W/p.length; p.forEach((v,i)=>{const h=Math.max(2*dpr,v*H*0.86);ctx.fillStyle="rgba(238,240,244,.55)";ctx.fillRect(i*bw+bw*0.2,(H-h)/2,bw*0.6,h);}); }
+function play(s,t){ if(!(cur.song===s.id&&cur.take===t.k)){audio.src=AUDIO[t.k];cur={song:s.id,take:t.k};} audio.play(); $("#player").classList.add("on"); $("#npArt").style.background=s.art; $("#npT").textContent=s.title; $("#npS").textContent=`${t.name} · seed ${t.seed}`; s.played++; icons(true); $$(".song").forEach(c=>c.classList.toggle("playing",c.dataset.id===s.id)); $$("#dTakes .take").forEach(r=>{const tt=s.takes[+r.dataset.i]; r.classList.toggle("playing",$("#s-song").dataset.id===s.id&&tt&&tt.k===t.k);}); }
+function stop(){audio.pause();audio.currentTime=0;cur={song:null,take:null};$("#player").classList.remove("on");icons(false);}
+function icons(on){const pl='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg>',pa='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';$("#npPlay").innerHTML=on?pa:pl;$$("#dTakes .take .play").forEach(b=>{b.innerHTML=(on&&b.closest(".take").classList.contains("playing"))?pa:pl;});}
+audio.addEventListener("timeupdate",()=>{const d=audio.duration||30,c=audio.currentTime,p=c/d;$("#npCur").textContent=fmt(c);$("#npDur").textContent=fmt(d);$("#npFill").style.width=(p*100)+"%";$$("#dTakes .take").forEach(r=>{$(".ph",r).style.width=r.classList.contains("playing")?(p*100)+"%":"0";});});
+audio.addEventListener("ended",()=>icons(false));
+$("#npPlay").addEventListener("click",()=>{ if(!cur.song){const s=SONGS.find(x=>x.takes.length); play(s,s.takes[0]); return;} if(audio.paused){audio.play();icons(true);} else {audio.pause();icons(false);} });
+$("#npBar").addEventListener("click",e=>{const r=e.currentTarget.getBoundingClientRect();audio.currentTime=((e.clientX-r.left)/r.width)*(audio.duration||30);});
+$("#npAB").addEventListener("click",()=>{const s=SONGS.find(x=>x.id===cur.song); if(!s||s.takes.length<2){toast("This song has one take");return;} const i=s.takes.findIndex(t=>t.k===cur.take); const t=audio.currentTime; play(s,s.takes[(i+1)%s.takes.length]); audio.currentTime=t; toast(`Now hearing ${s.takes[(i+1)%s.takes.length].name} at the same spot`);});
+$("#npNext").addEventListener("click",()=>{const ready=SONGS.filter(x=>x.takes.length); const i=ready.findIndex(x=>x.id===cur.song); const s=ready[(i+1)%ready.length]; play(s,s.takes.find(t=>t.kept)||s.takes[0]);});
+$("#helpBtn").addEventListener("click",()=>$("#help").classList.add("on"));$("#helpClose").addEventListener("click",()=>$("#help").classList.remove("on"));
+renderGrid();
+})();
+</script>

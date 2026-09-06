@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+import shutil
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,6 +15,7 @@ from app.core.database import get_db
 from app.models import Generation, Song, User
 from app.schemas import GenerateRequest, GenerationOut, JobOut, SongCreate, SongOut, SongUpdate
 from app.services.generation import enqueue_render
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/songs", tags=["songs"])
 
@@ -48,10 +51,18 @@ async def create_song(body: SongCreate, session: AsyncSession = Depends(get_db),
 
 
 @router.get("", response_model=list[SongOut])
-async def list_songs(session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> list[SongOut]:
-    rows = (await session.execute(
-        select(Song).options(selectinload(Song.generations)).where(Song.user_id == user.id).order_by(Song.created_at.desc()).limit(200)
-    )).scalars().all()
+async def list_songs(session: AsyncSession = Depends(get_db), user: User = Depends(current_user),
+                     q: str | None = Query(default=None, max_length=120), status: str | None = Query(default=None),
+                     kept: bool = Query(default=False, description="only songs with a favorite take")) -> list[SongOut]:
+    stmt = select(Song).options(selectinload(Song.generations)).where(Song.user_id == user.id)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(Song.title.ilike(like) | Song.style.ilike(like) | Song.lyrics.ilike(like) | Song.keywords.ilike(like))
+    if status:
+        stmt = stmt.where(Song.status == status)
+    if kept:
+        stmt = stmt.where(Song.generations.any(Generation.is_favorite.is_(True)))
+    rows = (await session.execute(stmt.order_by(Song.created_at.desc()).limit(500))).scalars().all()
     return [_song_out(s) for s in rows]
 
 
@@ -76,3 +87,14 @@ async def generate(song_id: uuid.UUID, body: GenerateRequest, session: AsyncSess
     song = await _load(session, song_id, user)
     job = await enqueue_render(session, song, takes=body.takes, quality=body.quality)
     return JobOut.model_validate(job, from_attributes=True)
+
+
+@router.delete("/{song_id}", status_code=204)
+async def delete_song(song_id: uuid.UUID, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> None:
+    """Deletes the song, its takes (DB cascade) and the rendered files under media_root/generations/<song_id>/."""
+    song = await _load(session, song_id, user)
+    await session.delete(song)
+    await session.commit()
+    folder = get_storage().root / "generations" / str(song_id)
+    if folder.exists():
+        shutil.rmtree(folder, ignore_errors=True)

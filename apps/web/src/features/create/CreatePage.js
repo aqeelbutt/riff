@@ -2,7 +2,8 @@
 /** The Create screen — the approved mock, wired to the API. Layout: Compose column | Stage; persistent player. */
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/api";
-import { fmt, usePlayer } from "@/features/player/usePlayer";
+import { fmt } from "@/features/player/usePlayer";
+import { usePlayerCtx } from "@/features/player/PlayerProvider";
 import { Wave } from "@/features/player/Wave";
 import { canGenerate, canWrite, currentTitle, stageRows } from "./createFlow";
 import { useCreateFlow } from "./useCreateFlow";
@@ -13,27 +14,32 @@ const EXAMPLES = [
   ["raat aur chaand", "raat, chaand, wo laut aaye — a longing love song"],
   ["rise from the wreckage", "rise from the wreckage, one voice, stadium"],
 ];
-const VOICES = [["female", "Female"], ["male", "Male"], ["duet", "Duet"], ["instrumental", "Inst."]];
+const VOICES = [["female", "Female"], ["male", "Male"], ["duet", "Duet"], ["instrumental", "Instrumental"]];
 const ROMAN = new Set(["hi", "ur", "pa", "bn"]);
+
+const SIDE_KEY = "riff:create:side";
+const SIDE_COLS = { collapsed: "md:grid-cols-[56px_1fr]", normal: "md:grid-cols-[400px_1fr]", wide: "md:grid-cols-[540px_1fr]" };
 
 export default function CreatePage() {
   const f = useCreateFlow();
   const { state: s, presets } = f;
-  const player = usePlayer();
+  const player = usePlayerCtx();
   const [toast, setToast] = useState(null);
+  const [side, setSideState] = useState("normal");
+  useEffect(() => { try { const v = localStorage.getItem(SIDE_KEY); if (v && SIDE_COLS[v]) setSideState(v); } catch {} }, []);
+  const setSide = (v) => { setSideState(v); try { localStorage.setItem(SIDE_KEY, v); } catch {} };
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2200); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { if (s.error) setToast(s.error); }, [s.error]);
 
   return (
-    <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 pb-24 md:grid-cols-[400px_1fr]">
-      <Compose f={f} presets={presets} />
+    <div className={`grid min-h-[calc(100vh-56px)] grid-cols-1 pb-24 ${SIDE_COLS[side]}`}>
+      {side === "collapsed" ? <Rail onExpand={() => setSide("normal")} phase={s.phase} /> : <Compose f={f} presets={presets} side={side} setSide={setSide} />}
       <section className="min-w-0 px-4 py-6 md:px-8" aria-live="polite">
         {s.phase === "compose" && <Empty />}
         {(s.phase === "briefing" || s.phase === "writing" || s.phase === "ready") && <Write f={f} />}
         {s.phase === "rendering" && <Rendering f={f} />}
         {s.phase === "result" && <Result f={f} player={player} onToast={setToast} />}
       </section>
-      <Player player={player} takes={s.takes} title={s.song?.title} />
       {toast && <div role="status" className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full bg-ink px-4 py-2.5 text-[13.5px] font-medium text-bg">{toast}</div>}
     </div>
   );
@@ -48,18 +54,33 @@ function Chip({ on, onClick, children, isNew }) {
 }
 function Seg({ value, options, onChange }) {
   return <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]">
-    {options.map(([v, l]) => <button key={v} type="button" aria-pressed={value === v} onClick={() => onChange(v)} className={`rounded-md px-1 py-1.5 text-[13px] ${value === v ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{l}</button>)}
+    {options.map(([v, l]) => <button key={v} type="button" aria-pressed={value === v} onClick={() => onChange(v)} className={`whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] ${value === v ? "bg-sur-3 text-ink" : "text-ink-2 hover:text-ink"}`}>{l}</button>)}
   </div>;
 }
 
-function Compose({ f, presets }) {
+function Rail({ onExpand, phase }) {
+  return (
+    <aside className="hidden flex-col items-center gap-3 border-r border-line bg-bg-2 py-4 md:sticky md:top-14 md:flex md:max-h-[calc(100vh-56px)]">
+      <button type="button" onClick={onExpand} aria-label="Expand the song panel" title="Expand" className="grid h-9 w-9 place-items-center rounded-lg border border-line bg-sur text-ink-2 hover:text-ink">›</button>
+      <span className="mt-2 [writing-mode:vertical-rl] rotate-180 font-mono text-[11px] uppercase tracking-[.12em] text-ink-3">{phase === "compose" ? "make a song" : "song settings"}</span>
+    </aside>
+  );
+}
+
+function Compose({ f, presets, side, setSide }) {
   const { state: s, compose } = f;
   const c = s.compose;
   const busy = ["briefing", "writing", "rendering"].includes(s.phase);
   return (
     <aside className="flex flex-col gap-5 border-b border-line bg-bg-2 px-5 pb-8 pt-6 md:sticky md:top-14 md:max-h-[calc(100vh-56px)] md:overflow-y-auto md:border-b-0 md:border-r">
-      <div><h1 className="font-disp text-[26px] font-extrabold leading-tight tracking-tight">Make a song</h1>
-        <p className="mt-1 text-[13.5px] text-ink-2">A few words is enough. Claude writes the lyrics, you tweak, the engine sings.</p></div>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1"><h1 className="font-disp text-[26px] font-extrabold leading-tight tracking-tight">Make a song</h1>
+          <p className="mt-1 text-[13.5px] text-ink-2">A few words is enough. Claude writes the lyrics, you tweak, the engine sings.</p></div>
+        <div className="hidden flex-none gap-1 md:flex" role="group" aria-label="Panel size">
+          <button type="button" onClick={() => setSide("collapsed")} aria-label="Collapse the song panel" title="Collapse" className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-sur text-ink-2 hover:text-ink">‹</button>
+          <button type="button" onClick={() => setSide(side === "wide" ? "normal" : "wide")} aria-label={side === "wide" ? "Narrow the song panel" : "Widen the song panel"} title={side === "wide" ? "Narrow" : "Widen"} aria-pressed={side === "wide"} className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-sur text-ink-2 hover:text-ink aria-pressed:border-acc aria-pressed:text-ink">⇔</button>
+        </div>
+      </div>
       <div>
         <Lbl hint="required">What&apos;s it about</Lbl>
         <textarea value={c.keywords} onChange={(e) => compose({ keywords: e.target.value })} rows={3} aria-label="What's the song about" placeholder="late night drive, neon city, running away together"
@@ -81,13 +102,11 @@ function Compose({ f, presets }) {
           {presets.moods.map((m) => <Chip key={m} on={c.moods.includes(m)} onClick={() => compose({ moods: c.moods.includes(m) ? c.moods.filter((x) => x !== m) : [...c.moods, m] })}>{m}</Chip>)}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div><Lbl>Voice</Lbl><Seg value={c.vocal} options={VOICES} onChange={(v) => compose({ vocal: v })} /></div>
-        <div><Lbl>Language</Lbl>
-          <select value={c.language} onChange={(e) => compose({ language: e.target.value })} aria-label="Vocal language" className="w-full rounded-r-sm border border-line bg-sur px-2.5 py-2 text-ink">
-            {presets.languages.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select></div>
-      </div>
+      <div><Lbl>Voice</Lbl><Seg value={c.vocal} options={VOICES} onChange={(v) => compose({ vocal: v })} /></div>
+      <div><Lbl>Language</Lbl>
+        <select value={c.language} onChange={(e) => compose({ language: e.target.value })} aria-label="Vocal language" className="w-full rounded-r-sm border border-line bg-sur px-2.5 py-2 text-ink">
+          {presets.languages.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+        </select></div>
       {ROMAN.has(c.language) && <div className="rounded-r-sm border-l-2 border-vio bg-[var(--vio-soft)] px-2.5 py-2 text-[12.5px] text-ink-2">Roman script sounds best for this language. Claude writes the lyrics as you&apos;d say them — <em>tere bina</em>, not तेरे बिना.</div>}
       <details className="border-t border-line pt-3">
         <summary className="cursor-pointer text-[13px] text-ink-2">Length, quality &amp; takes</summary>
@@ -102,7 +121,7 @@ function Compose({ f, presets }) {
           className="flex w-full items-center justify-center gap-2 rounded-r bg-acc px-4 py-3 text-[14.5px] font-semibold text-[#1A0C06] shadow-[0_8px_24px_-8px_rgba(255,106,61,.6)] transition hover:bg-acc-2 disabled:cursor-not-allowed disabled:bg-sur-3 disabled:text-ink-3 disabled:shadow-none">
           <Sparkle />{busy ? (s.phase === "rendering" ? "Rendering…" : "Writing…") : s.phase === "ready" || s.phase === "result" ? "Rewrite lyrics" : "Write lyrics"}
         </button>
-        <div className="mt-2 text-center font-mono text-[11.5px] text-ink-3">Claude drafts a brief + full lyrics in a few seconds · ⌘↵</div>
+        <div className="mt-2 text-center font-mono text-[11.5px] leading-snug text-ink-3">Claude drafts a brief + full lyrics in a few seconds<span className="hidden xl:inline"> · ⌘↵</span></div>
       </div>
     </aside>
   );
@@ -225,6 +244,8 @@ function Rendering({ f }) {
 function Result({ f, player, onToast }) {
   const { state: s } = f;
   const url = (g) => `${API_URL}${g.mp3_url || g.audio_url}`;
+  const trackOf = (g, i) => ({ id: g.id, url: url(g), title: s.song?.title, sub: `Take ${String.fromCharCode(65 + i)} · seed ${g.seed}` });
+  const list = s.takes.map(trackOf);
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -234,14 +255,14 @@ function Result({ f, player, onToast }) {
       </div>
       <div className="mt-4 grid gap-3.5 md:grid-cols-2">
         {s.takes.map((g, i) => {
-          const u = url(g), on = player.now.url === u, prog = on && player.now.d ? player.now.t / player.now.d : 0;
+          const u = url(g), on = player.isCurrent(g.id), prog = on ? player.progress : 0;
           return (
             <div key={g.id} className={`flex flex-col gap-3 rounded-[14px] border bg-sur p-4 transition ${on ? "border-acc" : "border-line"}`}>
               <div className="flex items-center gap-2.5"><span className="font-disp text-[19px] font-extrabold">Take {String.fromCharCode(65 + i)}</span><span className="ml-auto font-mono text-[11px] text-ink-3">seed {g.seed}</span>
                 <button type="button" aria-pressed={g.is_favorite} aria-label={`Keep take ${i + 1}`} onClick={() => fetch(`${API_URL}/generations/${g.id}/favorite`, { method: "POST" }).then(() => onToast(g.is_favorite ? "Unkept" : "Kept in your Library")).catch(() => {})} className={`h-[30px] w-[30px] rounded-lg ${g.is_favorite ? "text-acc" : "text-ink-3"}`}>♥</button></div>
-              <Wave url={u} progress={prog} onSeek={(p) => { if (!on) player.play(u, { title: s.song.title, sub: `Take ${String.fromCharCode(65 + i)} · seed ${g.seed}` }); player.seek(p); }} label={`Seek take ${i + 1}`} />
+              <Wave url={u} progress={prog} onSeek={(p) => { if (!on) player.play(trackOf(g, i), list); player.seek(p); }} label={`Seek take ${i + 1}`} />
               <div className="flex items-center gap-2">
-                <button type="button" aria-label={`Play take ${i + 1}`} onClick={() => player.toggle(u, { title: s.song.title, sub: `Take ${String.fromCharCode(65 + i)} · seed ${g.seed}` })} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-bg hover:bg-white"><PlayIcon playing={on && player.now.playing} /></button>
+                <button type="button" aria-label={`Play take ${i + 1}`} onClick={() => player.toggle(trackOf(g, i), list)} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-bg hover:bg-white"><PlayIcon playing={on && player.now.playing} /></button>
                 <span className="font-mono text-xs text-ink-2">{on ? fmt(player.now.t) : "0:00"} / {fmt(g.duration_s)}</span>
                 <span className="ml-auto flex gap-1.5">
                   <a href={u} download className="rounded-r-sm border border-line bg-sur-2 px-2.5 py-1.5 text-[12.5px]">Download</a>
@@ -255,20 +276,3 @@ function Result({ f, player, onToast }) {
   );
 }
 
-/* ---------------- player ---------------- */
-function Player({ player, takes, title }) {
-  const n = player.now;
-  if (!n.url) return null;
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-30 grid h-[76px] grid-cols-[auto_1fr_auto] items-center gap-4 border-t border-line bg-[color-mix(in_srgb,var(--sur)_92%,transparent)] px-5 backdrop-blur-md" aria-label="Now playing">
-      <div className="flex min-w-0 items-center gap-3"><div className="h-11 w-11 flex-none rounded-lg bg-gradient-to-br from-acc to-[#7a2a12]" /><div><div className="truncate font-semibold">{n.title || title}</div><div className="text-xs text-ink-2">{n.sub}</div></div></div>
-      <div className="flex items-center gap-3">
-        <button type="button" aria-label="Play or pause" onClick={() => player.toggle(n.url, {})} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-bg"><PlayIcon playing={n.playing} /></button>
-        <span className="font-mono text-[11.5px] text-ink-2">{fmt(n.t)}</span>
-        <div className="relative h-1 flex-1 cursor-pointer rounded-full bg-sur-3" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); player.seek((e.clientX - r.left) / r.width); }}><i className="absolute inset-y-0 left-0 rounded-full bg-acc" style={{ width: `${n.d ? (n.t / n.d) * 100 : 0}%` }} /></div>
-        <span className="font-mono text-[11.5px] text-ink-2">{fmt(n.d)}</span>
-      </div>
-      <div className="hidden md:flex">{takes?.length > 1 && <button type="button" onClick={() => { const i = takes.findIndex((g) => n.url.endsWith(g.mp3_url || g.audio_url)); const g = takes[(i + 1) % takes.length]; player.switchTo(`${API_URL}${g.mp3_url || g.audio_url}`, { title: n.title, sub: `Take ${String.fromCharCode(65 + ((i + 1) % takes.length))} · seed ${g.seed}` }); }} className="px-2 py-1.5 text-ink-2 hover:text-ink">A / B</button>}</div>
-    </div>
-  );
-}

@@ -36,3 +36,8 @@ var/
 .idea/
 .vscode/
 *.log
+
+# Next build dirs (E2E uses its own so it never collides with the dev server)
+.next-*/
+apps/web/test-results/
+apps/web/playwright-report/

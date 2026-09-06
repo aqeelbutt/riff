@@ -9,5 +9,7 @@ export async function api(path, { method = "GET", body } = {}) {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`);
-  return res.json();
+  if (res.status === 204) return null; // DELETE: no body
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }

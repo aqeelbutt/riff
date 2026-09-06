@@ -48,3 +48,16 @@ async def favorite(gen_id: uuid.UUID, session: AsyncSession = Depends(get_db), u
     g.is_favorite = not g.is_favorite
     await session.commit()
     return {"id": str(g.id), "is_favorite": g.is_favorite}
+
+
+@router.delete("/{gen_id}", status_code=204)
+async def delete_generation(gen_id: uuid.UUID, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> None:
+    g = await _load(session, gen_id, user)
+    st = get_storage()
+    for rel in (g.wav_path, g.mp3_path):
+        if rel:
+            p = st.absolute(rel)
+            if p.exists():
+                p.unlink(missing_ok=True)
+    await session.delete(g)
+    await session.commit()

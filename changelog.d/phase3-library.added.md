@@ -1,0 +1,1 @@
+- Library (Phase 3): song grid with search/filters/sort, song page with takes by run, keep/remove/download, rename, more takes, delete; one app-wide player with A/B that follows you between pages. `GET /songs` search/filter params, `DELETE /songs/{id}`, `DELETE /generations/{id}`. Playwright E2E for the whole Create→Library journey on fake providers.
