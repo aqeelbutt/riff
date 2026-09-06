@@ -1,0 +1,599 @@
+<title>Riff Create Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0E1014; --bg-2:#141821; --sur:#171B24; --sur-2:#1E2330; --sur-3:#262C3A; --line:#2A3040; --line-2:#363D4E;
+  --ink:#EEF0F4; --ink-2:#A6ADBB; --ink-3:#6E7684;
+  --acc:#FF6A3D; --acc-2:#FF8A66; --acc-soft:rgba(255,106,61,.14);
+  --mint:#5EE6B0; --mint-soft:rgba(94,230,176,.14);
+  --vio:#A78BFA; --vio-soft:rgba(167,139,250,.14);
+  --amber:#F5B640;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --disp:"Bricolage Grotesque","IBM Plex Sans",-apple-system,Helvetica,Arial,sans-serif;
+  --r:12px; --r-sm:8px; --r-pill:999px;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[contenteditable]:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+input,select,textarea{font:inherit;color:inherit}
+::selection{background:var(--acc-soft)}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;height:56px;padding:0 20px;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.wordmark{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.wordmark i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--acc);transform:rotate(45deg);box-shadow:0 0 0 3px var(--acc-soft)}
+.nav{display:flex;gap:4px}
+.nav button{padding:6px 12px;border-radius:var(--r-pill);color:var(--ink-2);font-weight:500}
+.nav button[aria-current="page"]{background:var(--sur-2);color:var(--ink)}
+.nav button:hover{color:var(--ink)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.engine{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);padding:5px 10px;border:1px solid var(--line);border-radius:var(--r-pill)}
+.engine b{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)}
+.help{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);color:var(--ink-2);font-family:var(--mono)}
+.help:hover{color:var(--ink);border-color:var(--line-2)}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:400px 1fr;min-height:calc(100vh - 56px);padding-bottom:88px}
+.compose{border-right:1px solid var(--line);padding:22px 20px 32px;display:flex;flex-direction:column;gap:20px;background:var(--bg-2)}
+.stage{padding:26px 32px 40px;min-width:0}
+@media (max-width:900px){.app{grid-template-columns:1fr}.compose{border-right:0;border-bottom:1px solid var(--line)}.stage{padding:20px 16px 40px}}
+
+h1{font-family:var(--disp);font-weight:800;font-size:26px;letter-spacing:-.02em;line-height:1.1;margin:0}
+.sub{color:var(--ink-2);margin:4px 0 0;font-size:13.5px}
+.lbl{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.lbl span{letter-spacing:0;text-transform:none;font-family:var(--sans);font-size:12px;color:var(--ink-3)}
+.field{display:flex;flex-direction:column}
+
+.kw{position:relative}
+.kw textarea{width:100%;min-height:78px;resize:vertical;background:var(--sur);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;line-height:1.45;color:var(--ink)}
+.kw textarea::placeholder{color:var(--ink-3)}
+.kw textarea:focus{border-color:var(--acc);outline:none;box-shadow:0 0 0 3px var(--acc-soft)}
+.examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.examples button{font-size:12px;color:var(--ink-2);padding:4px 9px;border:1px dashed var(--line-2);border-radius:var(--r-pill)}
+.examples button:hover{color:var(--ink);border-style:solid}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 11px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--sur);color:var(--ink-2);font-size:13px;transition:border-color .12s,background .12s,color .12s}
+.chip:hover{border-color:var(--line-2);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--ink)}
+.chip.new::after{content:"new";font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--mint);margin-left:6px;vertical-align:1px}
+.chip.more{border-style:dashed}
+
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sur);border:1px solid var(--line);border-radius:var(--r-sm);padding:3px;gap:3px}
+.seg button{padding:6px 4px;border-radius:6px;color:var(--ink-2);font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--sur-3);color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+select.sel{width:100%;background:var(--sur);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;color:var(--ink);appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.hint{margin-top:7px;font-size:12.5px;color:var(--ink-2);padding:8px 10px;border-left:2px solid var(--vio);background:var(--vio-soft);border-radius:0 6px 6px 0}
+.hint[hidden]{display:none}
+details.adv{border-top:1px solid var(--line);padding-top:12px}
+details.adv summary{cursor:pointer;color:var(--ink-2);font-size:13px;list-style:none;display:flex;align-items:center;gap:8px}
+details.adv summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform .15s}
+details.adv[open] summary::before{transform:rotate(45deg)}
+details.adv .body{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+
+.cta{margin-top:auto}
+@media (min-width:901px){.cta{position:sticky;bottom:96px}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:var(--r);font-weight:600;font-size:14.5px;transition:transform .08s,background .12s,box-shadow .12s;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{width:100%;background:var(--acc);color:#1A0C06;box-shadow:0 8px 24px -8px rgba(255,106,61,.6)}
+.btn.primary:hover{background:var(--acc-2)}
+.btn.primary:disabled{background:var(--sur-3);color:var(--ink-3);box-shadow:none;cursor:not-allowed}
+.btn.ghost{background:var(--sur-2);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--line-2)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:var(--r-sm)}
+.btn.link{color:var(--ink-2);padding:6px 8px}
+.btn.link:hover{color:var(--ink)}
+.cta .est{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:8px}
+
+/* ---------- stage states ---------- */
+.state{display:none}
+.state.on{display:block}
+.empty{max-width:560px;margin:8vh auto 0;text-align:center}
+.empty .glyph{width:84px;height:84px;margin:0 auto 22px;border-radius:24px;background:linear-gradient(145deg,var(--sur-2),var(--sur));border:1px solid var(--line);display:grid;place-items:center}
+.empty h2{font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:-.02em;margin:0 0 8px;text-wrap:balance}
+.empty p{color:var(--ink-2);margin:0 0 22px;max-width:44ch;margin-inline:auto}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:left}
+.steps div{padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--sur)}
+.steps b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--acc);margin-bottom:6px}
+.steps span{color:var(--ink-2);font-size:13px}
+@media (max-width:900px){.steps{grid-template-columns:1fr}}
+
+/* brief + lyrics */
+.stagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.stagehead h2{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;margin:0;line-height:1.05}
+.stagehead .by{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:6px}
+.brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.b{background:var(--sur);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-height:74px}
+.b .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.b .v{font-weight:600;font-size:15px}
+.b .v.mono{font-family:var(--mono);font-weight:500;font-size:16px;font-variant-numeric:tabular-nums}
+.b.title{grid-column:1/-1;min-height:auto}
+.titles{display:flex;flex-wrap:wrap;gap:6px}
+.titles button{padding:6px 12px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--ink-2);font-family:var(--disp);font-weight:700;font-size:15px}
+.titles button[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--ink)}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper button{width:24px;height:24px;border-radius:6px;background:var(--sur-3);color:var(--ink-2);font-family:var(--mono)}
+.stepper button:hover{color:var(--ink)}
+.skel{background:linear-gradient(90deg,var(--sur-2) 25%,var(--sur-3) 50%,var(--sur-2) 75%);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:6px;height:14px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.struct{display:flex;flex-wrap:wrap;gap:4px}
+.struct span{font-family:var(--mono);font-size:11px;padding:3px 7px;border-radius:5px;background:var(--sur-3);color:var(--ink-2)}
+.struct span.ch{background:var(--vio-soft);color:var(--vio)}
+
+.lyrics{background:var(--sur);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.lyrics .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+.lyrics .bar .t{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+.lyrics .bar .t i{width:8px;height:8px;border-radius:50%;background:var(--vio);box-shadow:0 0 8px var(--vio)}
+.lyrics .bar .t i.done{background:var(--mint);box-shadow:none}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line);position:relative}
+.sec:last-child{border-bottom:0}
+.sec .h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sec .h .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--vio)}
+.sec .h .tools{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.sec:hover .h .tools,.sec:focus-within .h .tools{opacity:1}
+.sec .h .tools button{font-size:12px;color:var(--ink-2);padding:3px 8px;border-radius:6px}
+.sec .h .tools button:hover{background:var(--sur-3);color:var(--ink)}
+.sec .txt{white-space:pre-wrap;line-height:1.55;font-size:15px;color:var(--ink);min-height:1.5em;outline:none;border-radius:4px;padding:2px 4px;margin:0 -4px}
+.sec .txt:focus{background:var(--sur-2)}
+.sec.busy .txt{opacity:.45}
+.caret::after{content:"▍";color:var(--vio);animation:bl .8s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+.gen{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.gen .btn.primary{width:auto;padding:12px 22px;font-size:15px}
+.gen .meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+
+/* rendering */
+.render{max-width:600px;margin:6vh auto 0}
+.render h2{font-family:var(--disp);font-weight:800;font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+.render .sub{margin-bottom:22px}
+.prog{height:6px;background:var(--sur-2);border-radius:3px;overflow:hidden;margin-bottom:18px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc-2));border-radius:3px;transition:width .4s}
+.stages{display:grid;gap:8px}
+.st{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sur);color:var(--ink-3)}
+.st .dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line-2);display:grid;place-items:center;font-size:11px;flex:none}
+.st.cur{color:var(--ink);border-color:var(--line-2)}
+.st.cur .dot{border-color:var(--acc);border-top-color:transparent;animation:sp .8s linear infinite}
+.st.done{color:var(--ink-2)}
+.st.done .dot{background:var(--mint);border-color:var(--mint);color:#052}
+@keyframes sp{to{transform:rotate(360deg)}}
+.st .tm{margin-left:auto;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+.render .foot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+
+/* result */
+.takes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+@media (max-width:900px){.takes{grid-template-columns:1fr}}
+.take{background:var(--sur);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .12s}
+.take.playing{border-color:var(--acc)}
+.take .th{display:flex;align-items:center;gap:10px}
+.take .th .name{font-family:var(--disp);font-weight:800;font-size:19px}
+.take .th .seed{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-left:auto}
+.take .th .fav{width:30px;height:30px;border-radius:8px;color:var(--ink-3);font-size:16px}
+.take .th .fav[aria-pressed="true"]{color:var(--acc)}
+.wave{position:relative;height:72px;background:var(--bg-2);border-radius:var(--r-sm);overflow:hidden;cursor:pointer}
+.wave canvas{width:100%;height:100%;display:block}
+.wave .ph{position:absolute;top:0;bottom:0;left:0;width:0;background:rgba(255,106,61,.16);border-right:1.5px solid var(--acc);pointer-events:none}
+.take .tr{display:flex;align-items:center;gap:8px}
+.play{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}
+.play:hover{background:#fff}
+.take .time{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.take .acts{display:flex;gap:6px;margin-left:auto}
+.take .acts .btn{padding:7px 11px;font-size:12.5px;border-radius:var(--r-sm)}
+.after{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}
+.after .spacer{flex:1}
+.resulthead .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.resulthead .tags span{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;background:var(--sur-2);color:var(--ink-2)}
+
+/* player */
+.player{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;height:76px;padding:0 20px;background:color-mix(in srgb,var(--sur) 92%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);transform:translateY(100%);transition:transform .25s}
+.player.on{transform:none}
+.player .np{display:flex;align-items:center;gap:12px;min-width:0}
+.player .art{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--acc),#7a2a12);flex:none}
+.player .np .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .np .s{font-size:12px;color:var(--ink-2)}
+.player .mid{display:flex;align-items:center;gap:12px}
+.player .bar{flex:1;height:4px;background:var(--sur-3);border-radius:2px;position:relative;cursor:pointer}
+.player .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:2px;width:0}
+.player .tm{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.player .rt{display:flex;gap:8px;align-items:center}
+@media (max-width:900px){.player{grid-template-columns:auto 1fr;gap:10px}.player .rt{display:none}}
+
+/* toast + modal */
+.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,10px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r-pill);font-weight:500;font-size:13.5px;z-index:40;transition:.18s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;place-items:center;padding:20px}
+.modal.on{display:grid}
+.modal .card{background:var(--sur);border:1px solid var(--line-2);border-radius:16px;max-width:560px;width:100%;padding:22px 24px;max-height:85vh;overflow:auto}
+.modal h3{font-family:var(--disp);font-size:22px;margin:0 0 10px}
+.modal p,.modal li{color:var(--ink-2);font-size:13.5px}
+.modal ul{padding-left:18px;margin:0 0 12px}
+.modal .card .btn{margin-top:8px}
+kbd{font-family:var(--mono);font-size:11px;padding:1px 6px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wordmark"><i></i>Riff</div>
+  <nav class="nav" aria-label="Main">
+    <button aria-current="page">Create</button>
+    <button data-toast="Library is the next mock">Library</button>
+    <button data-toast="Remix is the next mock">Remix</button>
+  </nav>
+  <div class="right">
+    <div class="engine" title="Local engine"><b></b>engine · turbo · ~1 min / 2 takes</div>
+    <button class="help" id="helpBtn" aria-label="About this mock">?</button>
+  </div>
+</header>
+
+<main class="app">
+  <!-- ================= COMPOSE ================= -->
+  <section class="compose" aria-label="Compose">
+    <div>
+      <h1>Make a song</h1>
+      <p class="sub">A few words is enough. Claude writes the lyrics, you tweak, the engine sings.</p>
+    </div>
+
+    <div class="field kw">
+      <div class="lbl">What's it about <span>required</span></div>
+      <textarea id="kw" placeholder="late night drive, neon city, running away together" rows="3" aria-label="What's the song about"></textarea>
+      <div class="examples" aria-label="Examples">
+        <button data-ex="late night drive, neon city, running away together">late night drive</button>
+        <button data-ex="grind, hometown, proving them wrong">grind &amp; hometown</button>
+        <button data-ex="raat, chaand, wo laut aaye — a longing love song">raat aur chaand</button>
+        <button data-ex="rise from the wreckage, one voice, stadium">rise from the wreckage</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lbl">Style <span>pick one, or describe your own</span></div>
+      <div class="chips" id="styles" role="group" aria-label="Style">
+        <button class="chip" aria-pressed="true" data-style="Pop">Pop</button>
+        <button class="chip" data-style="Hip-Hop">Hip-Hop</button>
+        <button class="chip new" data-style="Jazz-Rap">Jazz-Rap</button>
+        <button class="chip new" data-style="Rap-Rock">Rap-Rock</button>
+        <button class="chip" data-style="Rock">Rock</button>
+        <button class="chip" data-style="Folk">Folk</button>
+        <button class="chip" data-style="R&B">R&amp;B</button>
+        <button class="chip" data-style="Deep House">Deep House</button>
+        <button class="chip" data-style="Lo-fi">Lo-fi</button>
+        <button class="chip new" data-style="Bollywood">Bollywood</button>
+        <button class="chip new" data-style="Punjabi">Punjabi</button>
+        <button class="chip new" data-style="Sufi">Sufi</button>
+        <button class="chip more" data-toast="Free-text style opens an input here">Describe your own…</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lbl">Mood</div>
+      <div class="chips" id="moods" role="group" aria-label="Mood">
+        <button class="chip" aria-pressed="true">Euphoric</button><button class="chip">Nostalgic</button><button class="chip">Dark</button><button class="chip">Chill</button><button class="chip">Anthemic</button><button class="chip">Romantic</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <div class="lbl">Voice</div>
+        <div class="seg" id="voice" role="group" aria-label="Voice">
+          <button aria-pressed="true">Female</button><button>Male</button><button>Duet</button><button title="No vocals">Inst.</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="lbl">Language</div>
+        <select class="sel" id="lang" aria-label="Vocal language">
+          <option value="en">English</option><option value="hi">Hindi</option><option value="ur">Urdu</option><option value="pa">Punjabi</option><option value="bn">Bengali</option><option value="es">Spanish</option><option value="fr">French</option><option value="ar">Arabic</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint" id="langHint" hidden>Roman script sounds best for this language. Claude will write the lyrics as you'd say them — <em>tere bina</em>, not तेरे बिना. Paste native script and we'll transliterate it.</div>
+
+    <details class="adv">
+      <summary>Length, quality &amp; takes</summary>
+      <div class="body">
+        <div class="field"><div class="lbl">Length</div><div class="seg" id="len"><button>1:30</button><button aria-pressed="true">2:30</button><button>3:30</button></div></div>
+        <div class="field"><div class="lbl">Quality <span id="qEst">Fast · about 1 min</span></div><div class="seg" id="quality"><button aria-pressed="true" data-est="Fast · about 1 min">Fast</button><button data-est="Studio · about 3 min">Studio</button></div></div>
+        <div class="field"><div class="lbl">Takes</div><div class="seg" id="takes"><button>1</button><button aria-pressed="true">2</button><button>4</button></div></div>
+      </div>
+    </details>
+
+    <div class="cta">
+      <button class="btn primary" id="writeBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>
+        Write lyrics
+      </button>
+      <div class="est">Claude drafts a brief + full lyrics in a few seconds · <kbd>⌘</kbd><kbd>↵</kbd></div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE ================= -->
+  <section class="stage" aria-live="polite">
+
+    <!-- state: empty -->
+    <div class="state on" id="s-empty">
+      <div class="empty">
+        <div class="glyph"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 12h2l2-6 3 12 3-9 2 5 2-2h4"/></svg></div>
+        <h2>Your song shows up here</h2>
+        <p>Type what it's about, pick a style, and hit <b>Write lyrics</b>. Nothing is rendered until you say so.</p>
+        <div class="steps">
+          <div><b>01 · BRIEF</b><span>Claude proposes a title, tempo, key and structure. Change anything.</span></div>
+          <div><b>02 · LYRICS</b><span>Full lyrics in sections. Rewrite one verse without touching the rest.</span></div>
+          <div><b>03 · TAKES</b><span>Two takes in about a minute, on your Mac. Keep the one you love.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- state: brief + lyrics -->
+    <div class="state" id="s-write">
+      <div class="stagehead">
+        <div><h2 id="songTitle">Run With Me</h2><div class="by" id="briefBy">Claude is drafting the brief…</div></div>
+        <button class="btn link" id="startOver">Start over</button>
+      </div>
+
+      <div class="brief" id="brief">
+        <div class="b title"><div class="k">Title · pick one or type your own</div><div class="titles" id="titles"><div class="skel" style="width:60%"></div></div></div>
+        <div class="b"><div class="k">Genre</div><div class="v" id="bGenre"><div class="skel"></div></div></div>
+        <div class="b"><div class="k">Tempo</div><div class="v mono" id="bBpm"><div class="skel"></div></div></div>
+        <div class="b"><div class="k">Key</div><div class="v mono" id="bKey"><div class="skel"></div></div></div>
+        <div class="b"><div class="k">Mood</div><div class="v" id="bMood"><div class="skel"></div></div></div>
+        <div class="b" style="grid-column:1/-1;min-height:auto"><div class="k">Structure</div><div class="struct" id="bStruct"><div class="skel" style="width:70%"></div></div></div>
+      </div>
+
+      <div class="lyrics">
+        <div class="bar"><div class="t"><i id="lyrDot"></i><span id="lyrStatus">Writing lyrics…</span></div><div><button class="btn link" id="rewriteAll">Rewrite all</button></div></div>
+        <div id="sections"></div>
+      </div>
+
+      <div class="gen">
+        <button class="btn primary" id="genBtn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5v14l11-7z"/></svg>
+          Generate 2 takes
+        </button>
+        <span class="meta" id="genMeta">turbo · 2:30 · 2 takes · about 1 min · runs on this Mac</span>
+      </div>
+    </div>
+
+    <!-- state: rendering -->
+    <div class="state" id="s-render">
+      <div class="render">
+        <h2 id="renderTitle">Rendering “Run With Me”</h2>
+        <p class="sub">Two takes, different seeds. You can keep editing lyrics for the next run while this plays out.</p>
+        <div class="prog"><i id="progBar"></i></div>
+        <div class="stages" id="stages">
+          <div class="st" data-s="0"><span class="dot"></span>Queued<span class="tm"></span></div>
+          <div class="st" data-s="1"><span class="dot"></span>Composing · diffusion over 8 steps<span class="tm"></span></div>
+          <div class="st" data-s="2"><span class="dot"></span>Decoding audio<span class="tm"></span></div>
+          <div class="st" data-s="3"><span class="dot"></span>Mastering · loudness to −14 LUFS<span class="tm"></span></div>
+        </div>
+        <div class="foot"><span id="elapsed">0 s elapsed · usually about 60 s</span><button class="btn link" id="cancelBtn">Cancel</button></div>
+      </div>
+    </div>
+
+    <!-- state: result -->
+    <div class="state" id="s-result">
+      <div class="stagehead resulthead">
+        <div><h2 id="resultTitle">Run With Me</h2><div class="tags" id="resultTags"></div></div>
+        <div style="display:flex;gap:6px"><button class="btn ghost sm" id="editLyrics">Edit lyrics</button><button class="btn ghost sm" id="moreTakes">2 more takes</button></div>
+      </div>
+      <div class="takes" id="takes-wrap"></div>
+      <div class="after">
+        <span style="color:var(--ink-2);font-size:13px">Like one? Keep it, then</span>
+        <button class="btn ghost sm" data-toast="Remix flow is the next mock — desi deep house, jazz-rap layout, sufi house…">Remix this →</button>
+        <button class="btn ghost sm" data-toast="Extend adds 30 s in the same key and tempo">Extend +30 s</button>
+        <span class="spacer"></span>
+        <button class="btn link" id="startOver2">New song</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= PLAYER ================= -->
+<div class="player" id="player" aria-label="Now playing">
+  <div class="np"><div class="art"></div><div><div class="t" id="npT">—</div><div class="s" id="npS"></div></div></div>
+  <div class="mid">
+    <button class="play" id="npPlay" aria-label="Play or pause"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button>
+    <span class="tm" id="npCur">0:00</span>
+    <div class="bar" id="npBar"><i id="npFill"></i></div>
+    <span class="tm" id="npDur">0:30</span>
+  </div>
+  <div class="rt"><button class="btn link" id="npAB">A / B</button></div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="modal" id="help">
+  <div class="card">
+    <h3>What's real in this mock</h3>
+    <ul>
+      <li><b>The audio is real.</b> Take A and Take B are 30-second excerpts of the two takes ACE-Step rendered on your Mac in the Phase 0 spike (57 s for both, from the same lyrics).</li>
+      <li><b>The lyrics are real</b> — the spike's <code>pop.txt</code>, shown the way Claude would stream them. Section rewrites swap in alternate lines.</li>
+      <li><b>Timings are real</b> — the render stages and the ~60 s estimate come from the spike; here they play out in ~7 s.</li>
+      <li><b>Mocked:</b> the brief is canned, Library/Remix are placeholders, Download shows a toast (the sandbox blocks downloads).</li>
+    </ul>
+    <p>Things to judge: is the left column obvious with zero explanation? Is "Write lyrics → Generate" the right two-step, or should one button do both? Are the new styles (Jazz-Rap, Rap-Rock, Bollywood, Punjabi, Sufi) where you'd look for them?</p>
+    <button class="btn ghost sm" id="helpClose">Close</button>
+  </div>
+</div>
+
+<script>
+(() => {
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+
+/* ---------- data (from the spike) ---------- */
+const LYRICS = [
+  ["Intro", "Ooh, ooh"],
+  ["Verse 1", "Streetlights flicker on the boulevard\nWindows down, we're driving way too far\nEvery song we know, we sing it wrong\nDoesn't matter, tonight we belong"],
+  ["Pre-Chorus", "And the city hums a low electric tune\nLike it's daring us to leave too soon"],
+  ["Chorus", "So run with me till the morning breaks\nTake the long way, make the same mistakes\nWe're gold in the dark, we're wide awake\nRun with me, run with me tonight"],
+  ["Verse 2", "Coffee cups and a cracked cassette\nYou laugh at things I haven't said yet\nWe trade the map for a lucky guess\nTurns out lost is the best address"],
+  ["Pre-Chorus", "And the city hums a low electric tune\nLike it's daring us to leave too soon"],
+  ["Chorus", "So run with me till the morning breaks\nTake the long way, make the same mistakes\nWe're gold in the dark, we're wide awake\nRun with me, run with me tonight"],
+  ["Bridge · soft, building", "If the sun comes up and we're still here\nLet it find us with nothing left to fear"],
+  ["Chorus · anthemic", "So run with me till the morning breaks\nTake the long way, make the same mistakes\nWe're gold in the dark, we're wide awake\nRun with me, run with me tonight"],
+  ["Outro", "Run with me, run with me tonight"],
+];
+const ALT = {
+  "Verse 1": "Dashboard glow and a half-full tank\nYou're counting exits, I'm counting stars\nEvery red light is a place we could stay\nBut the road keeps whispering, not today",
+  "Verse 2": "Gas station coffee and a borrowed coat\nYou hum the part where the singer forgot\nWe keep the change and we keep the night\nTwo wrong turns and it all feels right",
+  "Chorus": "So run with me till the morning breaks\nTake the long way, make the same mistakes\nWe're gold in the dark, we're wide awake\nRun with me, run with me tonight",
+  "Bridge · soft, building": "If the sun comes up and finds us gone\nLet it write our names on the horizon",
+  "Pre-Chorus": "And the skyline leans in close to hear\nEvery reckless promise we make this year",
+  "Intro": "Mm, mm, yeah",
+  "Outro": "Run with me… tonight",
+};
+const BRIEF = { titles: ["Run With Me", "Gold in the Dark", "Long Way Home"], bpm: 118, key: "D major", mood: "Euphoric · nostalgic", struct: ["Intro","V1","Pre","Ch","V2","Pre","Ch","Br","Ch","Outro"] };
+const AUDIO = { A: "data:audio/mpeg;base64,__AUDIO1__", B: "data:audio/mpeg;base64,__AUDIO2__" };
+const SEEDS = { A: "2643125691", B: "181932275" };
+
+/* ---------- helpers ---------- */
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2200); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-toast]"); if (b) toast(b.dataset.toast); });
+function show(id){ $$(".state").forEach(s=>s.classList.toggle("on", s.id===id)); if(window.innerWidth<=900 && id!=="s-empty"){ $(".stage").scrollIntoView({behavior:"smooth",block:"start"}); } else { window.scrollTo({top:0}); } }
+function segify(root, onChange){ root.addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return; $$("button",root).forEach(x=>x.setAttribute("aria-pressed", x===b)); onChange && onChange(b); }); }
+const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+
+/* ---------- compose ---------- */
+const kw = $("#kw"), writeBtn = $("#writeBtn");
+kw.addEventListener("input", ()=> writeBtn.disabled = kw.value.trim().length < 3);
+$$(".examples button").forEach(b=> b.addEventListener("click", ()=>{ kw.value=b.dataset.ex; kw.dispatchEvent(new Event("input")); kw.focus(); }));
+document.addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey) && e.key==="Enter" && !writeBtn.disabled && $("#s-empty").classList.contains("on")) writeBtn.click(); });
+let style="Pop";
+$("#styles").addEventListener("click", e=>{ const b=e.target.closest(".chip"); if(!b||b.classList.contains("more")) return; $$("#styles .chip").forEach(x=>x.setAttribute("aria-pressed", x===b)); style=b.dataset.style; });
+$("#moods").addEventListener("click", e=>{ const b=e.target.closest(".chip"); if(!b) return; b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true"); });
+segify($("#voice")); segify($("#len"), b=>{ $("#genMeta").textContent = metaLine(); }); segify($("#takes"), b=>{ $("#genBtn").lastChild.textContent = ` Generate ${b.textContent} take${b.textContent==="1"?"":"s"}`; $("#genMeta").textContent = metaLine(); });
+segify($("#quality"), b=>{ $("#qEst").textContent=b.dataset.est; $("#genMeta").textContent = metaLine(); });
+function metaLine(){ const q=$("#quality [aria-pressed=true]"), l=$("#len [aria-pressed=true]").textContent, t=$("#takes [aria-pressed=true]").textContent; return `${q.textContent.toLowerCase()==="fast"?"turbo":"studio"} · ${l} · ${t} take${t==="1"?"":"s"} · ${q.dataset.est.split("· ")[1]} · runs on this Mac`; }
+$("#lang").addEventListener("change", e=> $("#langHint").hidden = !["hi","ur","pa","bn"].includes(e.target.value));
+
+/* ---------- write: brief + streaming lyrics ---------- */
+let streamTimer, streaming=false, sectionsDone=false;
+writeBtn.addEventListener("click", startWrite);
+function startWrite(){
+  show("s-write");
+  writeBtn.disabled = true; writeBtn.lastChild.textContent = " Rewriting…";
+  $("#songTitle").textContent = BRIEF.titles[0];
+  $("#briefBy").textContent = "Claude is drafting the brief…";
+  $("#genBtn").disabled = true; sectionsDone=false;
+  $("#lyrDot").classList.remove("done"); $("#lyrStatus").textContent = "Writing lyrics…";
+  // skeletons
+  $("#titles").innerHTML = '<div class="skel" style="width:60%"></div>';
+  ["bGenre","bBpm","bKey","bMood"].forEach(id=> $("#"+id).innerHTML='<div class="skel"></div>');
+  $("#bStruct").innerHTML='<div class="skel" style="width:70%"></div>';
+  $("#sections").innerHTML="";
+  setTimeout(fillBrief, 1100);
+  setTimeout(()=>streamLyrics(0), 1500);
+}
+function fillBrief(){
+  $("#briefBy").textContent = `Brief by Claude · ${style} · ${$("#lang option:checked").textContent} · from “${kw.value.trim().slice(0,48)}”`;
+  $("#titles").innerHTML = BRIEF.titles.map((t,i)=>`<button aria-pressed="${i===0}">${t}</button>`).join("") + `<button data-toast="Type your own title here">+ your own</button>`;
+  $("#titles").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b||b.dataset.toast) return; $$("#titles button").forEach(x=>x.setAttribute("aria-pressed", x===b)); $("#songTitle").textContent=b.textContent; });
+  $("#bGenre").textContent = style === "Pop" ? "Modern pop · synth bass, bright guitars" : style;
+  let bpm = BRIEF.bpm;
+  $("#bBpm").innerHTML = `<span class="stepper"><button aria-label="Slower">−</button><span id="bpmV">${bpm}</span><button aria-label="Faster">+</button></span> <span style="font-size:11px;color:var(--ink-3)">BPM</span>`;
+  $$("#bBpm .stepper button").forEach((b,i)=> b.addEventListener("click", ()=>{ bpm += i?2:-2; $("#bpmV").textContent=bpm; }));
+  $("#bKey").textContent = BRIEF.key;
+  $("#bMood").textContent = $$("#moods [aria-pressed=true]").map(x=>x.textContent).join(" · ") || BRIEF.mood;
+  $("#bStruct").innerHTML = BRIEF.struct.map(s=>`<span class="${s==="Ch"?"ch":""}">${s}</span>`).join("");
+}
+function streamLyrics(i){
+  if(i>=LYRICS.length){ streaming=false; sectionsDone=true; $("#lyrDot").classList.add("done"); $("#lyrStatus").textContent = `${LYRICS.length} sections · edit any line, or rewrite a section`; $("#genBtn").disabled=false; writeBtn.disabled=false; writeBtn.lastChild.textContent=" Write lyrics"; return; }
+  streaming=true;
+  const [tag, body] = LYRICS[i];
+  const sec = document.createElement("div"); sec.className="sec"; sec.dataset.tag=tag;
+  sec.innerHTML = `<div class="h"><span class="tag">[${tag}]</span><span class="tools"><button data-act="rewrite">↻ Rewrite</button><button data-act="shorter">Shorter</button><button data-act="del">Remove</button></span></div><div class="txt caret" contenteditable="true" spellcheck="false" aria-label="${tag} lyrics"></div>`;
+  $("#sections").appendChild(sec);
+  const txt = $(".txt", sec); let n=0;
+  const step = () => { n += 3; txt.textContent = body.slice(0,n); if(n<body.length){ streamTimer=setTimeout(step, 22); } else { txt.classList.remove("caret"); streamTimer=setTimeout(()=>streamLyrics(i+1), 120); } };
+  step();
+  sec.scrollIntoView({block:"nearest"});
+}
+$("#sections").addEventListener("click", e=>{
+  const b=e.target.closest("[data-act]"); if(!b) return; const sec=b.closest(".sec"), tag=sec.dataset.tag, txt=$(".txt",sec);
+  if(b.dataset.act==="del"){ sec.remove(); toast(`Removed [${tag}]`); return; }
+  sec.classList.add("busy"); toast(b.dataset.act==="shorter"?`Tightening [${tag}]…`:`Rewriting [${tag}]…`);
+  setTimeout(()=>{ let alt = ALT[tag] || txt.textContent; if(b.dataset.act==="shorter") alt = alt.split("\n").slice(0,2).join("\n"); txt.textContent = alt; sec.classList.remove("busy"); }, 900);
+});
+$("#rewriteAll").addEventListener("click", ()=>{ clearTimeout(streamTimer); startWrite(); });
+$("#startOver").addEventListener("click", reset); $("#startOver2").addEventListener("click", reset);
+function reset(){ clearTimeout(streamTimer); stopAudio(); show("s-empty"); writeBtn.disabled = kw.value.trim().length<3; writeBtn.lastChild.textContent=" Write lyrics"; }
+
+/* ---------- rendering ---------- */
+let renderTimers=[];
+$("#genBtn").addEventListener("click", startRender);
+$("#moreTakes").addEventListener("click", startRender);
+function startRender(){
+  show("s-render"); stopAudio();
+  $("#renderTitle").textContent = `Rendering “${$("#songTitle").textContent}”`;
+  renderTimers.forEach(clearTimeout); renderTimers=[];
+  const sts=$$("#stages .st"); sts.forEach(s=>{ s.className="st"; $(".tm",s).textContent=""; $(".dot",s).textContent=""; });
+  const plan=[[0,0,"0 s"],[1,700,"2 s"],[2,4600,"38 s"],[3,6100,"51 s"]]; // mock ≈7 s ≙ real ≈60 s
+  const t0=Date.now(); const el=$("#elapsed");
+  const tick=setInterval(()=>{ const s=Math.min(60, Math.round((Date.now()-t0)/7000*60)); el.textContent=`${s} s elapsed · usually about 60 s`; $("#progBar").style.width = Math.min(92, s/60*100)+"%"; }, 120);
+  renderTimers.push(tick);
+  plan.forEach(([i,at,label])=> renderTimers.push(setTimeout(()=>{ sts.forEach((s,j)=>{ if(j<i){ s.className="st done"; $(".dot",s).textContent="✓"; } }); sts[i].className="st cur"; $(".tm",sts[i]).textContent=label; }, at)));
+  renderTimers.push(setTimeout(()=>{ clearInterval(tick); $("#progBar").style.width="100%"; sts.forEach(s=>{ s.className="st done"; $(".dot",s).textContent="✓"; }); setTimeout(showResult, 350); }, 7000));
+}
+$("#cancelBtn").addEventListener("click", ()=>{ renderTimers.forEach(t=>{clearTimeout(t);clearInterval(t);}); toast("Cancelled — nothing was spent"); show("s-write"); });
+
+/* ---------- result + audio ---------- */
+const audio = new Audio(); let cur=null; // "A"|"B"
+function showResult(){
+  show("s-result");
+  const title=$("#songTitle").textContent; $("#resultTitle").textContent=title;
+  $("#resultTags").innerHTML = [style, `${$("#bpmV")?.textContent||BRIEF.bpm} BPM`, BRIEF.key, $("#len [aria-pressed=true]").textContent, "turbo · 57 s"].map(t=>`<span>${t}</span>`).join("");
+  $("#takes-wrap").innerHTML = ["A","B"].map(k=>`
+    <div class="take" data-take="${k}">
+      <div class="th"><span class="name">Take ${k}</span><span class="seed">seed ${SEEDS[k]}</span><button class="fav" aria-pressed="false" aria-label="Keep take ${k}">♥</button></div>
+      <div class="wave" role="slider" aria-label="Seek take ${k}" tabindex="0"><canvas></canvas><div class="ph"></div></div>
+      <div class="tr"><button class="play" aria-label="Play take ${k}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></button><span class="time">0:00 / 0:30</span>
+        <span class="acts"><button class="btn ghost" data-toast="Downloads WAV + MP3 in the real app (sandbox blocks it here)">Download</button><button class="btn ghost" data-toast="Opens Remix with this take as the source">Remix</button></span></div>
+    </div>`).join("");
+  $$(".take").forEach(t=>{
+    const k=t.dataset.take;
+    $(".play",t).addEventListener("click", ()=>toggle(k));
+    $(".fav",t).addEventListener("click", e=>{ const p=e.currentTarget.getAttribute("aria-pressed")!=="true"; e.currentTarget.setAttribute("aria-pressed",p); toast(p?`Take ${k} kept in your Library`:`Take ${k} unkept`); });
+    $(".wave",t).addEventListener("click", e=>{ const r=e.currentTarget.getBoundingClientRect(); const p=(e.clientX-r.left)/r.width; if(cur!==k) play(k); audio.currentTime = p*(audio.duration||30); });
+    drawWave(k, $("canvas",t));
+  });
+  $("#player").classList.add("on"); $("#npT").textContent=title; $("#npS").textContent="Choose a take to play";
+}
+const waves={};
+async function drawWave(k, canvas){
+  const dpr=window.devicePixelRatio||1; const W=canvas.clientWidth*dpr, H=canvas.clientHeight*dpr; canvas.width=W; canvas.height=H; const ctx=canvas.getContext("2d");
+  let peaks = waves[k];
+  if(!peaks){
+    try{
+      const ac = new (window.AudioContext||window.webkitAudioContext)();
+      const b64 = AUDIO[k].split(",")[1]; const bin=atob(b64); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+      const ab = await ac.decodeAudioData(buf.buffer); const d=ab.getChannelData(0); const N=160, blk=Math.floor(d.length/N); peaks=[];
+      for(let i=0;i<N;i++){ let m=0; for(let j=0;j<blk;j+=4){ const v=Math.abs(d[i*blk+j]); if(v>m) m=v; } peaks.push(m); }
+      const mx=Math.max(...peaks)||1; peaks=peaks.map(p=>p/mx); ac.close();
+    }catch(e){ peaks = Array.from({length:160},(_,i)=>0.35+0.6*Math.abs(Math.sin(i*0.37)*Math.cos(i*0.11))); }
+    waves[k]=peaks;
+  }
+  ctx.clearRect(0,0,W,H); const N=peaks.length, bw=W/N;
+  peaks.forEach((p,i)=>{ const h=Math.max(2*dpr, p*H*0.86); ctx.fillStyle = "rgba(238,240,244,.55)"; ctx.fillRect(i*bw+bw*0.2, (H-h)/2, bw*0.6, h); });
+}
+function play(k){ if(cur!==k){ audio.src=AUDIO[k]; cur=k; } audio.play(); $$(".take").forEach(t=>t.classList.toggle("playing", t.dataset.take===k)); $("#npS").textContent=`Take ${k} · seed ${SEEDS[k]}`; setPlayIcons(true); }
+function toggle(k){ if(cur===k && !audio.paused){ audio.pause(); setPlayIcons(false); } else play(k); }
+function stopAudio(){ audio.pause(); audio.currentTime=0; cur=null; setPlayIcons(false); $("#player").classList.remove("on"); }
+function setPlayIcons(playing){ const pl='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg>', pa='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  $$(".take .play").forEach(b=> b.innerHTML = (playing && b.closest(".take").dataset.take===cur)?pa:pl); $("#npPlay").innerHTML = playing?pa:pl; }
+audio.addEventListener("timeupdate", ()=>{ const d=audio.duration||30, c=audio.currentTime, p=c/d; $("#npCur").textContent=fmt(c); $("#npDur").textContent=fmt(d); $("#npFill").style.width=(p*100)+"%";
+  $$(".take").forEach(t=>{ const on=t.dataset.take===cur; $(".ph",t).style.width = on?(p*100)+"%":"0"; $(".time",t).textContent = on?`${fmt(c)} / ${fmt(d)}`:`0:00 / ${fmt(d)}`; }); });
+audio.addEventListener("ended", ()=> setPlayIcons(false));
+$("#npPlay").addEventListener("click", ()=>{ if(!cur){ play("A"); return; } toggle(cur); });
+$("#npBar").addEventListener("click", e=>{ const r=e.currentTarget.getBoundingClientRect(); audio.currentTime=((e.clientX-r.left)/r.width)*(audio.duration||30); });
+$("#npAB").addEventListener("click", ()=>{ const t=audio.currentTime; play(cur==="A"?"B":"A"); audio.currentTime=t; toast(`Switched to Take ${cur} at the same spot`); });
+$("#editLyrics").addEventListener("click", ()=>{ show("s-write"); });
+window.addEventListener("resize", ()=> $$(".take").forEach(t=>drawWave(t.dataset.take,$("canvas",t))));
+
+/* ---------- help ---------- */
+$("#helpBtn").addEventListener("click", ()=>$("#help").classList.add("on"));
+$("#helpClose").addEventListener("click", ()=>$("#help").classList.remove("on"));
+$("#help").addEventListener("click", e=>{ if(e.target.id==="help") e.currentTarget.classList.remove("on"); });
+})();
+</script>
