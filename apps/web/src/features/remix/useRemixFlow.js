@@ -6,7 +6,7 @@ import { initialState, reduce, remixBody } from "./remixFlow";
 
 export function useRemixFlow({ initialUploadId } = {}) {
   const [state, dispatch] = useReducer(reduce, initialState);
-  const [presets, setPresets] = useState({ remix: [], moods: [], languages: [] });
+  const [presets, setPresets] = useState({ remix: [], reimagine: [], moods: [], languages: [] });
   const [recent, setRecent] = useState([]);
   const uploadIdRef = useRef(null);
   const phaseRef = useRef(state.phase);
@@ -87,12 +87,12 @@ export function useRemixFlow({ initialUploadId } = {}) {
   const remix = useCallback(async () => {
     if (!state.upload) return;
     try {
-      const body = remixBody(state.style, state.upload, presets.remix);
+      const body = remixBody(state.style, state.upload, presets.remix, presets.reimagine);
       const { remixes, job: j } = await api(`/uploads/${state.upload.id}/remix`, { method: "POST", body });
       dispatch({ type: "start_render", job: j, remixes });
       track(j.id);
     } catch (e) { dispatch({ type: "error", error: e.message }); }
-  }, [state.upload, state.style, presets.remix, track]);
+  }, [state.upload, state.style, presets.remix, presets.reimagine, track]);
 
   const keep = useCallback(async (r) => {
     try { const res = await api(`/remixes/${r.id}/favorite`, { method: "POST" }); dispatch({ type: "open_result", upload: state.upload, batch: state.batch.map((x) => (x.id === r.id ? { ...x, is_favorite: res.is_favorite } : x)) }); return res.is_favorite; }

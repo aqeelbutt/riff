@@ -29,3 +29,19 @@ async def test_presets_endpoint(client):
     assert {"create", "remix", "moods", "languages"} <= set(body)
     assert any(l["code"] == "ur" for l in body["languages"])
     assert all_presets()["create"][0]["key"] == body["create"][0]["key"]
+
+
+def test_reimagine_directions_are_arrangements_not_beats():
+    from app.services.presets import REIMAGINE_DIRECTIONS
+    keys = [d["key"] for d in REIMAGINE_DIRECTIONS]
+    assert len(keys) == len(set(keys)) and "ballad" in keys and "anthem" in keys
+    for d in REIMAGINE_DIRECTIONS:
+        assert d["label"] and isinstance(d["bpm"], int) and len(d["caption"]) > 60
+        assert not BANNED.search(d["caption"])
+        # an arrangement names instruments and dynamics, not just a drum pattern
+        assert any(w in d["caption"] for w in ("piano", "strings", "guitar", "harmonium", "Rhodes", "orchestral"))
+
+
+async def test_presets_endpoint_serves_reimagine(client):
+    body = (await client.get("/presets")).json()
+    assert "reimagine" in body and any(d["key"] == "ballad" for d in body["reimagine"])

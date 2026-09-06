@@ -39,7 +39,9 @@ class UploadStatus(str, enum.Enum):
 
 
 class RemixMode(str, enum.Enum):
-    HYBRID = "hybrid"  # real lead over an AI cover WITH backing vocals (the user's pick)
+    REIMAGINE = "reimagine"  # Claude understands the song and writes a fresh ARRANGEMENT; the engine performs it (AI voice)
+    REIMAGINE_KEEP = "reimagine_keep"  # same arrangement rendered INSTRUMENTAL at the original tempo + your real auto-tuned vocal
+    HYBRID = "hybrid"  # real lead over an AI cover WITH backing vocals
     KEEP = "keep"  # real lead over a new instrumental bed
     RESING = "resing"  # the AI sings the transcribed lyrics
     INSTRUMENTAL = "instrumental"
@@ -194,6 +196,8 @@ class Remix(Base):
     autotune_strength: Mapped[float] = mapped_column(Float, default=0.85)  # 0 = untouched … 1 = hard snap
     batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_uuid, index=True)  # one run = N variations
     take_index: Mapped[int] = mapped_column(Integer, default=1)
+    direction: Mapped[str | None] = mapped_column(String(120))  # reimagine: "emotional ballad", "cinematic anthem", …
+    brief: Mapped[dict | None] = mapped_column(JSON)  # reimagine: Claude's reading — meaning, arc, structure, lyrics, caption
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(20), default="queued")  # queued | rendering | ready | failed
     wav_path: Mapped[str | None] = mapped_column(String(500))

@@ -109,16 +109,18 @@ Ready-made lyric files to try: `spike/lyrics/{pop,hiphop,folk,rock,jazzrap,rapro
 
 ## 5. Remix a song you own (web)
 
-http://localhost:3010/remix. Drop in an MP3/WAV/M4A/FLAC you own (tick the rights box first) or pick one of your own Riff songs, choose the language it's sung in, and the analysis runs on your Mac (about a minute): the vocal, drums, bass and other parts are separated (solo any of them), tempo, key and loudness are measured, and the lyrics are transcribed from the isolated vocal — fix any line before you continue. Then pick a style (Deep House, Chill Deep House, Desi Deep House, Sufi House, Afro House, Boom-Bap Flip, Jazz-Rap layout, Rap-Rock, Lo-fi, Synthwave, Drum & Bass, Acoustic, Orchestral, or describe your own), a mood, and how your voice is treated:
+http://localhost:3010/remix. Drop in an MP3/WAV/M4A/FLAC you own (tick the rights box first) or pick one of your own Riff songs, choose the language it's sung in, and the analysis runs on your Mac (about a minute): the vocal, drums, bass and other parts are separated (solo any of them), tempo, key and loudness are measured, and the lyrics are transcribed from the isolated vocal — fix any line before you continue. Then choose how to transform it:
 
-| Your voice | What happens |
+**Two approaches.** **Reimagine** *(the default)* doesn't push your recording into a beat: Claude reads your lyrics — what the song means, which lines are the chorus, where it should lift — and writes a full arrangement in your song's own key, which the engine then performs. Pick a direction (Emotional ballad, Cinematic anthem, Acoustic & strings, Sufi-pop, Modern pop, Lo-fi soul, or describe your own) and whether it's newly sung or **keeps your voice** — the second renders the arrangement as an instrumental at your original tempo so your auto-tuned vocal lines up. The result page shows Claude's reading of the song beside the audio. **Restyle** is the beat-driven path:
+
+| Your voice (Restyle) | What happens |
 |---|---|
 | **Your voice + AI backing** *(default)* | your real vocal is the lead; the AI performs the new music and backing vocals, which are separated out and **ducked under you** so they answer in the gaps instead of colliding |
 | Your voice only | your real vocal over a brand-new instrumental |
 | AI sings it | the AI re-sings your transcribed lyrics in the new style |
 | Instrumental | music only |
 
-**Auto-tune is on by default** (85 %): your lead is pitch-corrected note by note to the song's key, formant-preserving, so it comes out smoother but still you. Harmonies and a vocal-chop intro are opt-in. Every run renders **two variations** (different seeds; choose 1–4). The result page plays the original and each variation side by side with "Switch A/B at the same spot", keep and download; "Tweak" and "Another style" reuse the analysis so a new direction is one click and about a minute.
+Restyle offers the beat presets (Deep House, Chill Deep House, Desi Deep House, Sufi House, Afro House, Boom-Bap Flip, Jazz-Rap layout, Rap-Rock, Lo-fi, Synthwave, Drum & Bass, Acoustic, Orchestral, or your own words), a closeness slider and a tempo control. **Auto-tune is on by default** (85 %): your lead is pitch-corrected note by note to the song's key, formant-preserving, so it comes out smoother but still you. Harmonies and a vocal-chop intro are opt-in. Every run renders **two variations** (different seeds; choose 1–4). The result page plays the original and each variation side by side with "Switch A/B at the same spot", keep and download; "Tweak" and "Another style" reuse the analysis so a new direction is one click and about a minute.
 
 ## 5b. Remix from the command line
 

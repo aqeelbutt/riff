@@ -1,6 +1,11 @@
 """Remix job handlers (Phase 4): `analyze` (stems + tempo/key + lyrics) and `remix` (cover + vocal treatment + master).
 
-Modes — the CLI pipeline the user validated, now behind the job runner:
+Modes:
+  reimagine      Claude READS the song (transcribed lyrics + measured key/tempo), works out its meaning, chorus and arc,
+                 and writes a full ARRANGEMENT; the engine performs it fresh with the same words. Melodic, dynamic — the
+                 opposite of forcing the recording into a beat. AI sings.
+  reimagine_keep same arrangement, but rendered INSTRUMENTAL at the ORIGINAL tempo so the user's real (auto-tuned) vocal
+                 lines up on top of it.
   hybrid       real lead over an AI cover WITH backing vocals (cover of the full song with the transcribed lyrics)
   keep         real lead over a new instrumental bed (cover of the instrumental stem, no lyrics ⇒ instrumental)
   resing       the AI sings the transcribed lyrics in the new style (cover of the full song)
@@ -23,9 +28,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Job, Remix, RemixMode, Stem, Upload, UploadStatus
 from app.services import jobs
+from app.services.ai.lyrics import ReimagineInput, get_lyrics_provider
 from app.services.audio.tools import get_audio_tools
 from app.services.mastering import master
-from app.services.music import CoverRequest, get_provider
+from app.services.music import CoverRequest, RenderRequest, get_provider
 from app.services.storage import get_storage
 
 ANALYZE_STAGES = [
@@ -43,13 +49,44 @@ REMIX_STAGES = [
     {"key": "vocals", "label": "Auto-tuning and placing your vocal"},
     {"key": "mastering", "label": "Mastering · loudness to −14 LUFS"},
 ]
+REIMAGINE_STAGES = [
+    {"key": "queued", "label": "Queued"},
+    {"key": "understanding", "label": "Reading your song · meaning, chorus, arc"},
+    {"key": "rendering", "label": "Performing the new arrangement"},
+    {"key": "decoding", "label": "Decoding audio"},
+    {"key": "mastering", "label": "Mastering · loudness to −14 LUFS"},
+]
+REIMAGINE_KEEP_STAGES = [
+    {"key": "queued", "label": "Queued"},
+    {"key": "understanding", "label": "Reading your song · meaning, chorus, arc"},
+    {"key": "rendering", "label": "Performing the arrangement (instrumental)"},
+    {"key": "decoding", "label": "Decoding audio"},
+    {"key": "vocals", "label": "Auto-tuning and placing your vocal"},
+    {"key": "mastering", "label": "Mastering · loudness to −14 LUFS"},
+]
+REIMAGINE_MODES = {RemixMode.REIMAGINE, RemixMode.REIMAGINE_KEEP}
+
+
+def stages_for(mode: RemixMode) -> list[dict]:
+    if mode == RemixMode.REIMAGINE:
+        return REIMAGINE_STAGES
+    if mode == RemixMode.REIMAGINE_KEEP:
+        return REIMAGINE_KEEP_STAGES
+    return REMIX_STAGES
 
 CAPTION_FOR_MODE = {
+    RemixMode.REIMAGINE: "",
+    RemixMode.REIMAGINE_KEEP: "",
     RemixMode.HYBRID: ", lush stacked backing vocal harmonies and call-and-response answering the lead vocal",
     RemixMode.KEEP: ", instrumental",
     RemixMode.RESING: "",
     RemixMode.INSTRUMENTAL: ", instrumental, no vocals",
 }
+
+
+def r_style_caption(r: Remix) -> str | None:
+    """The direction's caption (stored on `style` when the run was queued) — a starting point for Claude's arrangement."""
+    return (r.style or "").strip() or None
 
 
 def _now() -> datetime:
@@ -111,14 +148,14 @@ async def handle_analyze(session: AsyncSession, job: Job) -> dict:
 
 async def enqueue_remix(session: AsyncSession, up: Upload, *, mode: RemixMode, style: str, preset_key: str | None, closeness: float,
                         bpm_to: float | None, ai_forward: int, harmony: str, chops: bool, autotune: bool, autotune_strength: float,
-                        takes: int, lyrics_override: str | None = None) -> tuple[list[Remix], Job]:
+                        takes: int, lyrics_override: str | None = None, direction: str | None = None) -> tuple[list[Remix], Job]:
     batch = uuid.uuid4()
     rows = [Remix(user_id=up.user_id, upload_id=up.id, mode=mode, preset_key=preset_key, style=style, closeness=closeness, bpm_to=bpm_to,
                   ai_forward=ai_forward, harmony=harmony, chops=chops, autotune=autotune, autotune_strength=autotune_strength,
-                  batch_id=batch, take_index=i + 1, status="queued") for i in range(max(1, min(4, takes)))]
+                  direction=direction, batch_id=batch, take_index=i + 1, status="queued") for i in range(max(1, min(4, takes)))]
     session.add_all(rows)
     await session.flush()
-    job = await jobs.enqueue_job(session, kind="remix", user_id=up.user_id, stages=REMIX_STAGES,
+    job = await jobs.enqueue_job(session, kind="remix", user_id=up.user_id, stages=stages_for(mode),
                                  payload={"upload_id": str(up.id), "remix_ids": [str(r.id) for r in rows], "lyrics_override": lyrics_override})
     for r in rows:
         r.job_id = job.id
@@ -148,9 +185,58 @@ async def handle_remix(session: AsyncSession, job: Job) -> dict:
         r.status = "rendering"
     await session.commit()
     done: list[str] = []
+
+    brief = None
+    if remixes[0].mode in REIMAGINE_MODES:
+        # ONE reading per batch: the arrangement is the same, only the seeds differ.
+        await progress("understanding")
+        keep_tempo = remixes[0].mode == RemixMode.REIMAGINE_KEEP
+        direction = remixes[0].direction or "emotional ballad"
+        extra = ("  IMPORTANT: keep the ORIGINAL tempo and the original line order exactly — the singer's own recording will be "
+                 "placed on this arrangement, so it must line up.") if keep_tempo else ""
+        brief = await get_lyrics_provider().reimagine(ReimagineInput(
+            lyrics=lyrics, key=up.key, bpm=up.bpm, vocal_language=up.vocal_language,
+            direction=direction + extra, direction_caption=r_style_caption(remixes[0]),
+            vocal="male", duration_s=int(min(600, max(60, up.duration_s or 180)))), user_id=up.user_id)
+        for r in remixes:
+            r.brief = brief.model_dump()
+        await session.commit()
+
     try:
         for r in remixes:
             mode = r.mode
+            if mode in REIMAGINE_MODES:
+                await progress("rendering")
+                instrumental = mode == RemixMode.REIMAGINE_KEEP
+                bpm = int(round(up.bpm)) if instrumental and up.bpm else brief.bpm
+                res = await provider.render(RenderRequest(
+                    style=brief.style_caption + (", instrumental, no vocals" if instrumental else ""),
+                    lyrics="" if instrumental else brief.lyrics, duration_s=int(min(600, max(60, up.duration_s or 180))),
+                    bpm=bpm, key=brief.key, vocal_language=up.vocal_language, takes=1, instrumental=instrumental,
+                    out_dir=out_dir / f"take-{r.take_index}"), on_progress=progress)
+                src_wav = res.takes[0].path
+                mix_info: dict = {}
+                if instrumental and "vocals" in stems:
+                    await progress("vocals")
+                    mixed = out_dir / f"take-{r.take_index}" / "mix.wav"
+                    cfg = {"vocal": str(stems["vocals"]), "bed": str(src_wav), "ai_vocals": None, "out": str(mixed),
+                           "bpm": float(up.bpm or brief.bpm), "key": brief.key or up.key or "", "harmony": r.harmony,
+                           "doubles": False, "chops": r.chops, "bed_under": 2.0, "bpm_to": 0.0,
+                           "autotune": r.autotune, "autotune_strength": r.autotune_strength}
+                    mix_info = await tools.vocal_mix(cfg)
+                    src_wav = Path(mix_info["out"])
+                await progress("mastering")
+                wav, mp3, lufs = await master(Path(src_wav))
+                r.wav_path, r.mp3_path = st.relative(wav), (st.relative(mp3) if mp3 else None)
+                r.lufs = lufs if lufs is not None else mix_info.get("lufs")
+                r.duration_s, r.render_seconds, r.seed = mix_info.get("duration_s"), res.render_seconds, res.takes[0].seed
+                r.params = {"caption": brief.style_caption, "bpm": bpm, "key": brief.key, "direction": r.direction,
+                            "notes_tuned": mix_info.get("notes_tuned"), "instrumental": instrumental}
+                r.status = "ready"
+                r.error = None
+                await session.commit()
+                done.append(str(r.id))
+                continue
             cover_src = stems.get("instrumental", src) if mode == RemixMode.KEEP else src
             cover_lyrics = "" if mode in (RemixMode.KEEP, RemixMode.INSTRUMENTAL) else lyrics
             caption = r.style + CAPTION_FOR_MODE[mode]

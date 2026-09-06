@@ -38,6 +38,48 @@ class SongBrief(BaseModel):
     hook_idea: str = Field(description="the chorus's central image or line, one sentence")
 
 
+class Reimagined(BaseModel):
+    """Structured output for REIMAGINE: understand an existing song (its transcribed lyrics + measured key/tempo) and write
+    the arrangement brief for a fresh, melodic, impactful performance of the SAME words."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(description="a title for this version")
+    meaning: str = Field(description="one or two sentences: what the song is about and its emotional arc")
+    style_caption: str = Field(description="the engine caption for the new arrangement: genre, concrete instruments, dynamics/arc, vocal delivery, production; no artist names")
+    bpm: int = Field(description="tempo for the new arrangement")
+    key: str = Field(description="musical key — keep the original unless there is a strong reason")
+    vocal: Literal["female", "male", "duet"]
+    lyrics: str = Field(description="the SAME lyrics, cleaned and organized into sections with tags on their own lines ([Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro]); repeated lines become the chorus; feel hints allowed like [Chorus - soaring]; in ROMAN script for hi/ur/pa/bn")
+    structure: list[str] = Field(description="the section tags in order")
+    arc: str = Field(description="how the dynamics move: where it is intimate, where it lifts, where it peaks")
+
+
+class ReimagineInput(BaseModel):
+    lyrics: str = Field(min_length=3, max_length=8000)
+    key: str | None = None
+    bpm: float | None = None
+    vocal_language: str = "en"
+    direction: str = Field(default="emotional ballad", max_length=200, description="e.g. emotional ballad, cinematic anthem, acoustic, sufi-pop, pop anthem")
+    direction_caption: str | None = Field(default=None, max_length=600)
+    vocal: Literal["female", "male", "duet"] = "male"
+    duration_s: int = Field(default=180, ge=60, le=600)
+
+
+SYSTEM_REIMAGINE = """You are a producer and arranger reinterpreting an existing song from its lyrics. First understand it: what the
+words mean, the emotional arc, which lines repeat (that is the chorus). Then design a NEW performance of the SAME words in the
+requested direction that is melodic, dynamic and impactful: clear verses that stay intimate, a chorus that lifts, a bridge or
+final chorus that peaks. Keep the original key unless there is a strong musical reason. The style_caption is read by a music
+engine: name concrete instruments, the drum feel (or no drums), the dynamic arc, the vocal delivery, the production; never a real
+artist's name. Lyrics: keep the words (fix obvious transcription slips), do NOT add new verses, organize into tagged sections,
+and if the language is Hindi/Urdu/Punjabi/Bengali write them in ROMAN script exactly as they are sung. Answer only with the JSON."""
+
+
+def reimagine_prompt(inp: ReimagineInput) -> str:
+    return (f"Direction: {inp.direction}" + (f"\nDirection caption to build on: {inp.direction_caption}" if inp.direction_caption else "")
+            + f"\nOriginal key: {inp.key or 'unknown'}\nOriginal tempo: {inp.bpm or 'unknown'} BPM\nLanguage: {inp.vocal_language}\nVocal: {inp.vocal}"
+            f"\nTarget length: {inp.duration_s} seconds\n\nLyrics as transcribed (may contain slips):\n{inp.lyrics}")
+
+
 class BriefInput(BaseModel):
     keywords: str = Field(min_length=2, max_length=500)
     style: str = Field(default="Pop", max_length=200, description="preset label or free text")
@@ -131,6 +173,13 @@ class FakeLyrics:
     async def rewrite_section(self, lyrics: str, tag: str, instruction: str, user_id: uuid.UUID | None = None) -> str:
         return f"Rewritten {tag} ({instruction})\nSecond line of the rewrite"
 
+    async def reimagine(self, inp: ReimagineInput, user_id: uuid.UUID | None = None) -> Reimagined:
+        lines = [ln for ln in inp.lyrics.splitlines() if ln.strip()]
+        return Reimagined(title="Reimagined", meaning="a song about trust and love overcoming hardship", style_caption=f"{inp.direction}, piano, strings, building dynamics",
+                          bpm=int(inp.bpm or 84), key=inp.key or "C major", vocal=inp.vocal,
+                          lyrics="[Verse 1]\n" + "\n".join(lines[:2]) + "\n\n[Chorus - soaring]\n" + "\n".join(lines[2:4] or lines[:1]),
+                          structure=["Verse 1", "Chorus"], arc="intimate verse, lifting chorus")
+
 
 class ClaudeLyrics:
     name = "claude"
@@ -174,6 +223,19 @@ class ClaudeLyrics:
                 t["usage"] = final.usage
                 if final.stop_reason == "refusal":
                     raise RuntimeError("the model declined these lyrics")
+
+    async def reimagine(self, inp: ReimagineInput, user_id: uuid.UUID | None = None) -> Reimagined:
+        async with telemetry.timed("reimagine_brief", self.model, user_id) as t:
+            r = await self.client.messages.create(
+                model=self.model, max_tokens=6000, system=self._system(SYSTEM_REIMAGINE),
+                output_config={"effort": self.effort, "format": {"type": "json_schema", "schema": Reimagined.model_json_schema()}},
+                messages=[{"role": "user", "content": reimagine_prompt(inp)}],
+            )
+            t["usage"] = r.usage
+            if r.stop_reason == "refusal":
+                raise RuntimeError("the model declined this reinterpretation")
+            text = next(b.text for b in r.content if b.type == "text")
+            return Reimagined.model_validate_json(text)
 
     async def rewrite_section(self, lyrics: str, tag: str, instruction: str, user_id: uuid.UUID | None = None) -> str:
         async with telemetry.timed("lyrics_section", self.model, user_id) as t:

@@ -64,9 +64,26 @@ REMIX_PRESETS: list[dict] = [
      "caption": "cinematic orchestral version, strings, brass, timpani, epic build, keep the vocals"},
 ]
 
+# Reimagine directions — Claude reads the song, then arranges it this way. `keep_tempo` marks directions that stay at the
+# original tempo (required when the user's own vocal is placed back on top, so it lines up).
+REIMAGINE_DIRECTIONS: list[dict] = [
+    {"key": "ballad", "label": "Emotional ballad", "bpm": 76, "new": True,
+     "caption": "emotional pop ballad, intimate felt piano and close acoustic guitar, warm string section and low cello swelling under the pre-chorus, soft brushed drums entering on the second verse, choir pads on the final chorus, tender then soaring lead vocal, cinematic dynamics, wide natural reverb"},
+    {"key": "anthem", "label": "Cinematic anthem", "bpm": 122, "new": True,
+     "caption": "cinematic anthem, lone harmonium drone and soft tabla opening, lush orchestral strings and flute swelling into the pre-chorus, big rolling floor toms building to a euphoric chorus with stacked harmonies, powerful passionate lead vocal, dramatic lifts, epic and hopeful"},
+    {"key": "acoustic", "label": "Acoustic & strings", "bpm": 88, "new": True,
+     "caption": "stripped acoustic arrangement, fingerpicked nylon guitar, upright bass, light percussion, string quartet answering the vocal, intimate close-miked lead vocal with a single harmony, warm room sound, honest and unhurried"},
+    {"key": "sufipop", "label": "Sufi-pop", "bpm": 96, "new": True,
+     "caption": "modern sufi-pop, harmonium and dholak groove, sarangi and bansuri answering the vocal, qawwali-style hand claps and backing chants rising into an ecstatic chorus, soulful lead vocal with melismatic runs, spiritual and building"},
+    {"key": "popanthem", "label": "Modern pop", "bpm": 104, "new": True,
+     "caption": "polished modern pop production, warm synth bass and bright piano chords, crisp programmed drums with real cymbals, layered synth pads, a big singalong chorus with doubled vocals, confident radio-ready lead vocal, glossy and uplifting"},
+    {"key": "lofisoul", "label": "Lo-fi soul", "bpm": 82, "new": True,
+     "caption": "lo-fi soul arrangement, dusty drum break with swing, warm Rhodes and muted trumpet, upright bass, vinyl crackle and tape warmth, relaxed intimate lead vocal, late-night and reflective"},
+]
+
 MOODS = ["Euphoric", "Nostalgic", "Dark", "Chill", "Anthemic", "Romantic", "Emotional", "Dreamy", "Late night"]
 LANGUAGES = [("en", "English"), ("hi", "Hindi"), ("ur", "Urdu"), ("pa", "Punjabi"), ("bn", "Bengali"), ("es", "Spanish"), ("fr", "French"), ("ar", "Arabic")]
 
 
 def all_presets() -> dict:
-    return {"create": CREATE_PRESETS, "remix": REMIX_PRESETS, "moods": MOODS, "languages": [{"code": c, "label": l} for c, l in LANGUAGES]}
+    return {"create": CREATE_PRESETS, "remix": REMIX_PRESETS, "reimagine": REIMAGINE_DIRECTIONS, "moods": MOODS, "languages": [{"code": c, "label": l} for c, l in LANGUAGES]}

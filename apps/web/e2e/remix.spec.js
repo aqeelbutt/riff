@@ -32,22 +32,32 @@ test("a song you own becomes a remix with your voice in front", async ({ page })
   await expect(page.getByRole("button", { name: /Vocals/ })).toBeVisible();   // a stem chip
   await expect(page.getByLabel("Lyrics")).toHaveValue(/Bolne se sach/);
 
-  // style: hybrid + auto-tune are the defaults
+  // style: Reimagine is the default approach, sung, auto-tune on
   await page.getByRole("button", { name: /choose a style/ }).click();
+  await expect(page.getByRole("button", { name: "Approach: Reimagine" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Emotional ballad" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Voice: Let it be sung" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/2 variations/)).toBeVisible();
+
+  // switching to Restyle shows the beat presets and the your-voice modes
+  await page.getByRole("button", { name: "Approach: Restyle" }).click();
   await expect(page.getByRole("button", { name: /Your voice \+ AI backing/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("switch", { name: "Auto-tune" })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("switch", { name: "Harmonies on my voice" })).toHaveAttribute("aria-checked", "false");
-  await page.getByRole("button", { name: /Chill Deep House/ }).click();
-  await expect(page.getByText(/2 variations/)).toBeVisible();
-  await page.getByRole("button", { name: "Remix it" }).click();
 
-  // render → result with the original + two remixes
+  // back to Reimagine and run it
+  await page.getByRole("button", { name: "Approach: Reimagine" }).click();
+  await page.getByRole("button", { name: "Cinematic anthem" }).click();
+  await page.getByRole("button", { name: "Reimagine it", exact: true }).click();
+
+  // render → result with Claude's reading + the original and two versions
   await expect(page.getByRole("heading", { name: /Remixing/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Chill Deep House/ })).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByRole("heading", { name: "What Claude heard" })).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByText(/trust and love/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Play Original" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Play Remix A/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Play Remix B/ })).toBeVisible();
-  await page.getByRole("button", { name: /Play Remix A/ }).click();
+  await expect(page.getByRole("button", { name: /Play Version A/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Play Version B/ })).toBeVisible();
+  await page.getByRole("button", { name: /Play Version A/ }).click();
   await expect(page.getByLabel("Now playing")).toBeVisible();
   await page.getByRole("button", { name: "♥ Keep" }).first().click();
   await expect(page.getByText("Kept")).toBeVisible();

@@ -162,3 +162,73 @@ async def test_favorite_and_delete_cleanup(client):
     assert (await client.delete(f"/uploads/{up['id']}")).status_code == 204
     assert not folder.exists()
     assert (await client.get(f"/uploads/{up['id']}")).status_code == 404
+
+
+async def test_reimagine_reads_the_song_then_performs_it(client, fake_provider, fake_lyrics, monkeypatch):
+    """Reimagine: Claude gets the transcribed lyrics + measured key/tempo; the engine RENDERS the arrangement (no cover)."""
+    up = await _analyzed(client)
+    seen = {}
+    real = fake_lyrics.reimagine
+
+    async def spy(inp, user_id=None):
+        seen["inp"] = inp
+        return await real(inp, user_id)
+
+    monkeypatch.setattr(fake_lyrics, "reimagine", spy)
+    r = await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine", "preset_key": "ballad", "takes": 2})
+    assert r.status_code == 202, r.text
+    rem, job = r.json()["remixes"], r.json()["job"]
+    assert rem[0]["mode"] == "reimagine" and rem[0]["direction"] == "Emotional ballad"
+    assert [s["key"] for s in job["progress"]["stages"]] == ["queued", "understanding", "rendering", "decoding", "mastering"]
+    assert await jobs.run_once() is True
+    assert (await client.get(f"/jobs/{job['id']}")).json()["status"] == "done"
+    # Claude saw the song's own words, key and tempo
+    assert seen["inp"].lyrics.startswith("Bolne se sach") and seen["inp"].key == "G major" and seen["inp"].bpm == 126.0
+    assert seen["inp"].vocal_language == "ur" and "emotional pop ballad" in seen["inp"].direction_caption
+    out = (await client.get(f"/uploads/{up['id']}")).json()["remixes"]
+    assert all(x["status"] == "ready" for x in out) and len(out) == 2
+    assert out[0]["brief"]["meaning"] and out[0]["brief"]["arc"]  # the reading is stored for the UI
+    # it PERFORMED the arrangement (render) rather than pushing the recording through a cover
+    assert fake_provider.last_cover is None
+    rq = fake_provider.last_render
+    assert rq.style == out[0]["brief"]["style_caption"] and rq.lyrics == out[0]["brief"]["lyrics"]
+    assert rq.bpm == out[0]["brief"]["bpm"] and rq.instrumental is False and rq.vocal_language == "ur"
+
+
+async def test_reimagine_keep_renders_instrumental_at_the_original_tempo_and_places_your_vocal(client, fake_tools, fake_lyrics, monkeypatch):
+    up = await _analyzed(client)
+    mixes, briefs = [], {}
+    real_mix, real_re = fake_tools.vocal_mix, fake_lyrics.reimagine
+
+    async def spy_mix(cfg):
+        mixes.append(cfg)
+        return await real_mix(cfg)
+
+    async def spy_re(inp, user_id=None):
+        briefs["inp"] = inp
+        return await real_re(inp, user_id)
+
+    monkeypatch.setattr(fake_tools, "vocal_mix", spy_mix)
+    monkeypatch.setattr(fake_lyrics, "reimagine", spy_re)
+    r = await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine_keep", "preset_key": "acoustic", "takes": 1})
+    assert r.status_code == 202
+    job = r.json()["job"]
+    assert [s["key"] for s in job["progress"]["stages"]] == ["queued", "understanding", "rendering", "decoding", "vocals", "mastering"]
+    await jobs.run_once()
+    assert (await client.get(f"/jobs/{job['id']}")).json()["status"] == "done"
+    assert "must line up" in briefs["inp"].direction  # the arrangement is told to keep tempo + line order
+    assert len(mixes) == 1 and mixes[0]["vocal"].endswith("vocals.wav") and mixes[0]["ai_vocals"] is None
+    assert mixes[0]["autotune"] is True and mixes[0]["bpm_to"] == 0.0  # no stretch: the bed was rendered at the song's tempo
+    out = (await client.get(f"/uploads/{up['id']}")).json()["remixes"][0]
+    assert out["status"] == "ready" and out["params"]["instrumental"] is True
+    assert out["params"]["bpm"] == 126  # the ORIGINAL tempo, so the real vocal lines up
+
+
+async def test_reimagine_needs_lyrics_and_rejects_a_remix_preset(client):
+    r = await client.post("/uploads", files={"file": ("q.wav", _wav_bytes(), "audio/wav")}, data={"rights": "true"})
+    up = r.json()["upload"]
+    await jobs.run_once()
+    await client.patch(f"/uploads/{up['id']}", json={"lyrics": ""})
+    assert (await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine", "preset_key": "ballad"})).status_code == 409
+    await client.patch(f"/uploads/{up['id']}", json={"lyrics": "some words"})
+    assert (await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine", "preset_key": "deephouse"})).status_code == 422

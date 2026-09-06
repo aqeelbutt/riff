@@ -1,4 +1,14 @@
 /** Remix flow state machine — pure reducer, unit-tested. Phases: start → analyzing → check → style → rendering → result. */
+/** The top-level choice: understand-and-re-perform, or put the recording over a new beat. */
+export const APPROACHES = [
+  ["reimagine", "Reimagine", "Claude reads your song — meaning, chorus, arc — and writes a new arrangement in your key. The engine performs it."],
+  ["restyle", "Restyle", "Put your recording over a new beat, keeping your voice."],
+];
+export const REIMAGINE_VOICES = [
+  ["ai", "Let it be sung", "a new performance of your words — the most melodic result"],
+  ["mine", "Keep my voice", "the arrangement is played at your tempo and your auto-tuned vocal sits on top"],
+];
+
 export const MODES = [
   ["hybrid", "Your voice + AI backing", "your lead, AI harmonies answering you"],
   ["keep", "Your voice only", "your lead, new music under it"],
@@ -10,7 +20,8 @@ export const initialState = {
   phase: "start",
   upload: null,        // the server's upload record (facts, stems, lyrics, remixes)
   job: null,
-  style: { preset: "deephouse", custom: "", mode: "hybrid", closeness: 50, tempo: "match", bpmCustom: "", aiForward: 1, harmony: false, chops: false,
+  style: { approach: "reimagine", direction: "ballad", reimagineVoice: "ai",
+           preset: "deephouse", custom: "", mode: "hybrid", closeness: 50, tempo: "match", bpmCustom: "", aiForward: 1, harmony: false, chops: false,
            autotune: true, autotuneStrength: 85, takes: 2, moods: ["Emotional", "Chill"] },
   batch: [],           // remixes from the latest run
   error: null,
@@ -50,8 +61,34 @@ export function targetBpm(style, upload, presets) {
   return p && p.bpm ? p.bpm : null;
 }
 
+export const isReimagine = (style) => style.approach === "reimagine";
+/** The API mode for the current choices. */
+export function modeOf(style) {
+  if (!isReimagine(style)) return style.mode;
+  return style.reimagineVoice === "mine" ? "reimagine_keep" : "reimagine";
+}
+
 /** POST /uploads/{id}/remix body from the style state. */
-export function remixBody(style, upload, presets) {
+export function remixBody(style, upload, presets, reimaginePresets) {
+  if (isReimagine(style)) {
+    const d = (reimaginePresets || []).find((x) => x.key === style.direction);
+    return {
+      mode: modeOf(style),
+      preset_key: style.direction === "custom" ? null : style.direction,
+      style: style.direction === "custom" ? style.custom.trim() || null : null,
+      direction: style.direction === "custom" ? style.custom.trim().slice(0, 120) : (d?.label || style.direction),
+      autotune: !!style.autotune,
+      autotune_strength: Math.round(style.autotuneStrength) / 100,
+      harmony: style.harmony ? "12" : "",
+      chops: !!style.chops,
+      takes: style.takes,
+      moods: style.moods,
+    };
+  }
+  return restyleBody(style, upload, presets);
+}
+
+function restyleBody(style, upload, presets) {
   const bpmTo = targetBpm(style, upload, presets);
   return {
     preset_key: style.preset === "custom" ? null : style.preset,
@@ -69,7 +106,14 @@ export function remixBody(style, upload, presets) {
   };
 }
 
-export const canRemix = (s) => s.phase === "style" && !!s.upload && (s.style.preset !== "custom" || s.style.custom.trim().length > 3);
+export const canRemix = (s) => {
+  if (s.phase !== "style" || !s.upload) return false;
+  if (isReimagine(s.style)) {
+    if (!(s.upload.lyrics || "").trim()) return false; // reimagine needs words to understand
+    return s.style.direction !== "custom" || s.style.custom.trim().length > 3;
+  }
+  return s.style.preset !== "custom" || s.style.custom.trim().length > 3;
+};
 export const showsVoiceOpts = (mode) => mode === "hybrid" || mode === "keep";
 
 /** Stage rows for a remix job (backend owns labels). */
@@ -80,7 +124,14 @@ export function stageRows(job) {
   return stages.map((s, i) => ({ ...s, state: cur === "done" || i < idx ? "done" : i === idx ? "current" : "todo" }));
 }
 
-export const summary = (s, presets) => {
+export const summary = (s, presets, reimaginePresets) => {
+  if (isReimagine(s.style)) {
+    const d = (reimaginePresets || []).find((x) => x.key === s.style.direction);
+    const name = s.style.direction === "custom" ? (s.style.custom.trim() || "Custom") : (d?.label || s.style.direction);
+    const voice = s.style.reimagineVoice === "mine" ? "your voice on it" : "newly sung";
+    return [`Reimagined · ${name}`, voice, s.upload?.key && `in ${s.upload.key}`, s.style.autotune && s.style.reimagineVoice === "mine" && "auto-tune",
+      `${s.style.takes} variation${s.style.takes === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
+  }
   const p = (presets || []).find((x) => x.key === s.style.preset);
   const name = s.style.preset === "custom" ? (s.style.custom.trim() || "Custom") : (p?.label || s.style.preset);
   const mode = MODES.find((m) => m[0] === s.style.mode)?.[1].toLowerCase();

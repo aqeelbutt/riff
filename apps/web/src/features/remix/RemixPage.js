@@ -7,7 +7,7 @@ import { API_URL, api } from "@/lib/api";
 import { fmtDur, coverGradient } from "@/lib/library";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
 import { Wave } from "@/features/player/Wave";
-import { MODES, aiLabel, canRemix, closenessLabel, showsVoiceOpts, stageRows, summary, targetBpm } from "./remixFlow";
+import { APPROACHES, MODES, REIMAGINE_VOICES, aiLabel, canRemix, closenessLabel, isReimagine, showsVoiceOpts, stageRows, summary, targetBpm } from "./remixFlow";
 import { useRemixFlow } from "./useRemixFlow";
 
 const PlayIcon = ({ playing }) => playing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z" /></svg>;
@@ -139,55 +139,105 @@ function Check({ f, presets, player }) {
 function Style({ f, presets }) {
   const { state: s } = f; const st = s.style; const set = f.setStyle;
   const u = s.upload;
+  const re = isReimagine(st);
   const bpm = targetBpm(st, u, presets.remix);
+  const noLyrics = !(u.lyrics || "").trim();
   return (
     <div>
       <h1 className="font-disp text-[30px] font-extrabold leading-none tracking-tight">How should it sound?</h1>
-      <p className="mt-1.5 text-ink-2">Pick a direction. Every preset keeps your song&apos;s melody and structure; you control how far it travels.</p>
-      <div className="mt-3.5 grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }} role="group" aria-label="Style">
-        {presets.remix.map((p) => <button key={p.key} type="button" aria-pressed={st.preset === p.key} onClick={() => set({ preset: p.key, tempo: p.bpm ? st.tempo : "keep" })} className={`relative flex min-h-[104px] flex-col gap-1 rounded-[14px] border p-3.5 text-left transition hover:-translate-y-px ${st.preset === p.key ? "border-acc bg-gradient-to-b from-[var(--acc-soft)] to-transparent" : "border-line bg-sur hover:border-line-2"}`}>
-          <b className="font-disp text-base font-bold">{p.label}</b><span className="text-[12.5px] text-ink-2">{p.caption.split(",").slice(1, 3).join(",")}</span><span className="mt-auto font-mono text-[10.5px] text-ink-3">{p.bpm ? `${p.bpm} BPM` : "keeps tempo"}</span>{p.new && <span className="absolute right-2.5 top-2.5 font-mono text-[9.5px] tracking-[.08em] text-mint">NEW</span>}</button>)}
-        <button type="button" aria-pressed={st.preset === "custom"} onClick={() => set({ preset: "custom" })} className={`flex min-h-[104px] flex-col items-center justify-center rounded-[14px] border border-dashed p-3.5 text-center ${st.preset === "custom" ? "border-acc bg-[var(--acc-soft)]" : "border-line bg-sur"}`}><b className="font-disp text-base font-bold">Describe it…</b><span className="text-[12.5px] text-ink-2">your own words</span></button>
-      </div>
-      {st.preset === "custom" && <textarea value={st.custom} onChange={(e) => set({ custom: e.target.value })} rows={2} aria-label="Describe the style" placeholder="e.g. sufi house with harmonium drone, dholak, stacked qawwali backing vocals, 122 BPM" className="mt-3 w-full rounded-r border border-line bg-sur px-3.5 py-3 text-ink outline-none focus:border-acc" />}
+      <p className="mt-1.5 max-w-[62ch] text-ink-2">Two ways to go: have the song <b className="text-ink">understood and re-performed</b>, or put your recording over a new beat.</p>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div>
-          <Lbl>Your voice</Lbl>
-          <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Your voice">
-            {MODES.map(([k, l, sub]) => <button key={k} type="button" aria-pressed={st.mode === k} onClick={() => set({ mode: k })} className={`rounded-md px-1.5 py-2 text-[13px] leading-tight ${st.mode === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{l}<small className="block text-[10.5px] font-normal text-ink-3">{sub}</small></button>)}
-          </div>
-          {showsVoiceOpts(st.mode) && <div className="mt-3 grid gap-2">
-            <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Auto-tune</b><span className="text-xs text-ink-2">Smooths your pitch to the song&apos;s key ({u.key || "detected"})</span></div><Sw on={st.autotune} onChange={(v) => set({ autotune: v })} label="Auto-tune" /></div>
-            {st.autotune && <div className="px-1"><div className="flex items-center gap-2.5 py-1"><small className="w-16 font-mono text-[10.5px] text-ink-3">Gentle</small><input type="range" min="30" max="100" step="5" value={st.autotuneStrength} onChange={(e) => set({ autotuneStrength: +e.target.value })} aria-label="Auto-tune strength" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Hard</small></div><div className="text-[12.5px] text-ink-2">{st.autotuneStrength >= 95 ? "Hard-tune — the classic snapped effect" : st.autotuneStrength >= 75 ? "Smooth — corrected, still human" : "Gentle — just nudged toward the key"}</div></div>}
-            <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Harmonies on my voice</b><span className="text-xs text-ink-2">An octave stacked on your lead — off keeps it clean</span></div><Sw on={st.harmony} onChange={(v) => set({ harmony: v })} label="Harmonies on my voice" /></div>
-            <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Vocal chops intro</b><span className="text-xs text-ink-2">Stutter your first phrase over the intro</span></div><Sw on={st.chops} onChange={(v) => set({ chops: v })} label="Vocal chops intro" /></div>
-            {st.mode === "hybrid" && <div className="px-1"><Lbl hint="ducked under you while you sing"><span className="mt-2 inline-block">AI vocals</span></Lbl><div className="flex items-center gap-2.5"><small className="w-16 font-mono text-[10.5px] text-ink-3">Behind you</small><input type="range" min="-3" max="4" step="1" value={st.aiForward} onChange={(e) => set({ aiForward: +e.target.value })} aria-label="AI vocals forward or back" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Forward</small></div><div className="text-[12.5px] text-ink-2">{aiLabel(st.aiForward)}</div></div>}
-          </div>}
-          <Lbl><span className="mt-4 inline-block">Mood</span></Lbl>
-          <div className="flex flex-wrap gap-1.5">{presets.moods.map((m) => <button key={m} type="button" aria-pressed={st.moods.includes(m)} onClick={() => set({ moods: st.moods.includes(m) ? st.moods.filter((x) => x !== m) : [...st.moods, m] })} className={`rounded-full border px-3 py-1.5 text-[13px] ${st.moods.includes(m) ? "border-acc bg-[var(--acc-soft)] text-ink" : "border-line bg-sur text-ink-2"}`}>{m}</button>)}</div>
-        </div>
-        <div>
-          <Lbl>How close to the original</Lbl>
-          <div className="flex items-center gap-2.5 py-1"><small className="w-16 font-mono text-[10.5px] text-ink-3">Reinvented</small><input type="range" min="30" max="80" step="5" value={st.closeness} onChange={(e) => set({ closeness: +e.target.value })} aria-label="Closeness to original" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Faithful</small></div>
-          <div className="text-[12.5px] text-ink-2">{closenessLabel(st.closeness)}</div>
-          <Lbl><span className="mt-4 inline-block">Tempo</span></Lbl>
-          <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Tempo">
-            {[["keep", "Keep", `${Math.round(u.bpm || 0)} BPM`], ["match", "Match style", (presets.remix.find((p) => p.key === st.preset)?.bpm || Math.round(u.bpm || 0)) + " BPM"], ["custom", "Custom", "…"]].map(([k, l, sub]) => <button key={k} type="button" aria-pressed={st.tempo === k} onClick={() => set({ tempo: k })} className={`rounded-md px-1.5 py-2 text-[13px] leading-tight ${st.tempo === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{l}<small className="block text-[10.5px] font-normal text-ink-3">{sub}</small></button>)}
-          </div>
-          {st.tempo === "custom" && <input type="number" min="40" max="220" value={st.bpmCustom} onChange={(e) => set({ bpmCustom: e.target.value })} aria-label="Custom BPM" placeholder="BPM" className="mt-2 w-32 rounded-r-sm border border-line bg-sur px-3 py-2 font-mono text-ink outline-none focus:border-acc" />}
-          {bpm && u.bpm && Math.abs(bpm - u.bpm) > u.bpm * 0.15 && <div className="mt-2 rounded-r-sm border-l-2 border-amber bg-[rgba(245,182,64,.14)] px-2.5 py-2 text-[12.5px] text-ink-2">A tempo change over ~15% stretches your voice audibly. Consider keeping the tempo.</div>}
-          <Lbl><span className="mt-4 inline-block">Variations</span></Lbl>
-          <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Variations">{[1, 2, 3, 4].map((n) => <button key={n} type="button" aria-pressed={st.takes === n} onClick={() => set({ takes: n })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.takes === n ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{n}</button>)}</div>
-          <div className="mt-1.5 text-[12.5px] text-ink-2">Different seeds, same settings — pick your favourite. About a minute each.</div>
-        </div>
+      <div className="mt-4 grid gap-2.5 md:grid-cols-2" role="group" aria-label="Approach">
+        {APPROACHES.map(([k, l, sub]) => (
+          <button key={k} type="button" aria-pressed={st.approach === k} aria-label={`Approach: ${l}`} onClick={() => set({ approach: k })}
+            className={`rounded-[14px] border p-4 text-left transition ${st.approach === k ? "border-acc bg-gradient-to-b from-[var(--acc-soft)] to-transparent" : "border-line bg-sur hover:border-line-2"}`}>
+            <b className="font-disp text-[17px] font-bold">{l}</b>{k === "reimagine" && <span className="ml-2 align-[2px] font-mono text-[9.5px] tracking-[.08em] text-mint">RECOMMENDED</span>}
+            <span className="mt-1 block text-[13px] text-ink-2">{sub}</span></button>))}
       </div>
+
+      {re ? (<>
+        {noLyrics && <div className="mt-3 rounded-r-sm border-l-2 border-amber bg-[rgba(245,182,64,.14)] px-3 py-2 text-[13px] text-ink-2">Reimagining needs the words. Go back to <b>Check</b> and add the lyrics, then come back.</div>}
+        <div className="mt-5"><Lbl hint="Claude arranges it this way, in your key">Direction</Lbl>
+          <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }} role="group" aria-label="Direction">
+            {presets.reimagine.map((d) => <button key={d.key} type="button" aria-pressed={st.direction === d.key} aria-label={d.label} onClick={() => set({ direction: d.key })}
+              className={`relative flex min-h-[104px] flex-col gap-1 rounded-[14px] border p-3.5 text-left transition hover:-translate-y-px ${st.direction === d.key ? "border-acc bg-gradient-to-b from-[var(--acc-soft)] to-transparent" : "border-line bg-sur hover:border-line-2"}`}>
+              <b className="font-disp text-base font-bold">{d.label}</b><span className="text-[12.5px] text-ink-2">{d.caption.split(",").slice(1, 3).join(",")}</span><span className="mt-auto font-mono text-[10.5px] text-ink-3">around {d.bpm} BPM</span></button>)}
+            <button type="button" aria-pressed={st.direction === "custom"} onClick={() => set({ direction: "custom" })} className={`flex min-h-[104px] flex-col items-center justify-center rounded-[14px] border border-dashed p-3.5 text-center ${st.direction === "custom" ? "border-acc bg-[var(--acc-soft)]" : "border-line bg-sur"}`}><b className="font-disp text-base font-bold">Describe it…</b><span className="text-[12.5px] text-ink-2">your own words</span></button>
+          </div>
+          {st.direction === "custom" && <textarea value={st.custom} onChange={(e) => set({ custom: e.target.value })} rows={2} aria-label="Describe the arrangement" placeholder="e.g. slow qawwali with harmonium, strings and a choir on the last chorus" className="mt-3 w-full rounded-r border border-line bg-sur px-3.5 py-3 text-ink outline-none focus:border-acc" />}
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div>
+            <Lbl>The voice</Lbl>
+            <div className="grid gap-2">
+              {REIMAGINE_VOICES.map(([k, l, sub]) => <button key={k} type="button" aria-pressed={st.reimagineVoice === k} aria-label={`Voice: ${l}`} onClick={() => set({ reimagineVoice: k })}
+                className={`rounded-r-sm border p-3 text-left ${st.reimagineVoice === k ? "border-acc bg-[var(--acc-soft)]" : "border-line bg-sur"}`}>
+                <b className="block text-[13.5px] font-semibold">{l}</b><span className="text-xs text-ink-2">{sub}</span></button>)}
+            </div>
+            {st.reimagineVoice === "mine" && <div className="mt-3 grid gap-2">
+              <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Auto-tune</b><span className="text-xs text-ink-2">Smooths your pitch to {u.key || "the key"}</span></div><Sw on={st.autotune} onChange={(v) => set({ autotune: v })} label="Auto-tune" /></div>
+              {st.autotune && <div className="px-1"><div className="flex items-center gap-2.5 py-1"><small className="w-16 font-mono text-[10.5px] text-ink-3">Gentle</small><input type="range" min="30" max="100" step="5" value={st.autotuneStrength} onChange={(e) => set({ autotuneStrength: +e.target.value })} aria-label="Auto-tune strength" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Hard</small></div><div className="text-[12.5px] text-ink-2">{st.autotuneStrength >= 95 ? "Hard-tune — the classic snapped effect" : st.autotuneStrength >= 75 ? "Smooth — corrected, still human" : "Gentle — just nudged toward the key"}</div></div>}
+              <div className="rounded-r-sm border-l-2 border-vio bg-[var(--vio-soft)] px-2.5 py-2 text-[12.5px] text-ink-2">The arrangement is played at your song&apos;s tempo ({Math.round(u.bpm || 0)} BPM) so your vocal lines up.</div>
+            </div>}
+          </div>
+          <div>
+            <Lbl>Mood</Lbl>
+            <div className="flex flex-wrap gap-1.5">{presets.moods.map((mo) => <button key={mo} type="button" aria-pressed={st.moods.includes(mo)} onClick={() => set({ moods: st.moods.includes(mo) ? st.moods.filter((x) => x !== mo) : [...st.moods, mo] })} className={`rounded-full border px-3 py-1.5 text-[13px] ${st.moods.includes(mo) ? "border-acc bg-[var(--acc-soft)] text-ink" : "border-line bg-sur text-ink-2"}`}>{mo}</button>)}</div>
+            <Lbl><span className="mt-4 inline-block">Variations</span></Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Variations">{[1, 2, 3, 4].map((n) => <button key={n} type="button" aria-pressed={st.takes === n} onClick={() => set({ takes: n })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.takes === n ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{n}</button>)}</div>
+            <div className="mt-1.5 text-[12.5px] text-ink-2">Same arrangement, different performances. About a minute each.</div>
+            <div className="mt-4 rounded-r-sm border border-line bg-sur p-3 text-[12.5px] text-ink-2"><b className="block text-[13px] font-semibold text-ink">What happens</b>Claude reads your lyrics — the meaning, which lines are the chorus, where it should lift — and writes the arrangement in {u.key || "your key"}. You&apos;ll see that reading with the result.</div>
+          </div>
+        </div>
+      </>) : (<>
+        <div className="mt-5"><Lbl>Style</Lbl>
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }} role="group" aria-label="Style">
+          {presets.remix.map((p) => <button key={p.key} type="button" aria-pressed={st.preset === p.key} onClick={() => set({ preset: p.key, tempo: p.bpm ? st.tempo : "keep" })} className={`relative flex min-h-[104px] flex-col gap-1 rounded-[14px] border p-3.5 text-left transition hover:-translate-y-px ${st.preset === p.key ? "border-acc bg-gradient-to-b from-[var(--acc-soft)] to-transparent" : "border-line bg-sur hover:border-line-2"}`}>
+            <b className="font-disp text-base font-bold">{p.label}</b><span className="text-[12.5px] text-ink-2">{p.caption.split(",").slice(1, 3).join(",")}</span><span className="mt-auto font-mono text-[10.5px] text-ink-3">{p.bpm ? `${p.bpm} BPM` : "keeps tempo"}</span>{p.new && <span className="absolute right-2.5 top-2.5 font-mono text-[9.5px] tracking-[.08em] text-mint">NEW</span>}</button>)}
+          <button type="button" aria-pressed={st.preset === "custom"} onClick={() => set({ preset: "custom" })} className={`flex min-h-[104px] flex-col items-center justify-center rounded-[14px] border border-dashed p-3.5 text-center ${st.preset === "custom" ? "border-acc bg-[var(--acc-soft)]" : "border-line bg-sur"}`}><b className="font-disp text-base font-bold">Describe it…</b><span className="text-[12.5px] text-ink-2">your own words</span></button>
+        </div>
+        {st.preset === "custom" && <textarea value={st.custom} onChange={(e) => set({ custom: e.target.value })} rows={2} aria-label="Describe the style" placeholder="e.g. sufi house with harmonium drone, dholak, stacked qawwali backing vocals, 122 BPM" className="mt-3 w-full rounded-r border border-line bg-sur px-3.5 py-3 text-ink outline-none focus:border-acc" />}
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div>
+            <Lbl>Your voice</Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Your voice">
+              {MODES.map(([k, l, sub]) => <button key={k} type="button" aria-pressed={st.mode === k} onClick={() => set({ mode: k })} className={`rounded-md px-1.5 py-2 text-[13px] leading-tight ${st.mode === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{l}<small className="block text-[10.5px] font-normal text-ink-3">{sub}</small></button>)}
+            </div>
+            {showsVoiceOpts(st.mode) && <div className="mt-3 grid gap-2">
+              <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Auto-tune</b><span className="text-xs text-ink-2">Smooths your pitch to the song&apos;s key ({u.key || "detected"})</span></div><Sw on={st.autotune} onChange={(v) => set({ autotune: v })} label="Auto-tune" /></div>
+              {st.autotune && <div className="px-1"><div className="flex items-center gap-2.5 py-1"><small className="w-16 font-mono text-[10.5px] text-ink-3">Gentle</small><input type="range" min="30" max="100" step="5" value={st.autotuneStrength} onChange={(e) => set({ autotuneStrength: +e.target.value })} aria-label="Auto-tune strength" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Hard</small></div><div className="text-[12.5px] text-ink-2">{st.autotuneStrength >= 95 ? "Hard-tune — the classic snapped effect" : st.autotuneStrength >= 75 ? "Smooth — corrected, still human" : "Gentle — just nudged toward the key"}</div></div>}
+              <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Harmonies on my voice</b><span className="text-xs text-ink-2">An octave stacked on your lead — off keeps it clean</span></div><Sw on={st.harmony} onChange={(v) => set({ harmony: v })} label="Harmonies on my voice" /></div>
+              <div className="flex items-center justify-between gap-3 rounded-r-sm border border-line bg-sur px-3 py-2.5"><div><b className="block text-[13.5px] font-semibold">Vocal chops intro</b><span className="text-xs text-ink-2">Stutter your first phrase over the intro</span></div><Sw on={st.chops} onChange={(v) => set({ chops: v })} label="Vocal chops intro" /></div>
+              {st.mode === "hybrid" && <div className="px-1"><Lbl hint="ducked under you while you sing"><span className="mt-2 inline-block">AI vocals</span></Lbl><div className="flex items-center gap-2.5"><small className="w-16 font-mono text-[10.5px] text-ink-3">Behind you</small><input type="range" min="-3" max="4" step="1" value={st.aiForward} onChange={(e) => set({ aiForward: +e.target.value })} aria-label="AI vocals forward or back" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Forward</small></div><div className="text-[12.5px] text-ink-2">{aiLabel(st.aiForward)}</div></div>}
+            </div>}
+            <Lbl><span className="mt-4 inline-block">Mood</span></Lbl>
+            <div className="flex flex-wrap gap-1.5">{presets.moods.map((mo) => <button key={mo} type="button" aria-pressed={st.moods.includes(mo)} onClick={() => set({ moods: st.moods.includes(mo) ? st.moods.filter((x) => x !== mo) : [...st.moods, mo] })} className={`rounded-full border px-3 py-1.5 text-[13px] ${st.moods.includes(mo) ? "border-acc bg-[var(--acc-soft)] text-ink" : "border-line bg-sur text-ink-2"}`}>{mo}</button>)}</div>
+          </div>
+          <div>
+            <Lbl>How close to the original</Lbl>
+            <div className="flex items-center gap-2.5 py-1"><small className="w-16 font-mono text-[10.5px] text-ink-3">Reinvented</small><input type="range" min="30" max="80" step="5" value={st.closeness} onChange={(e) => set({ closeness: +e.target.value })} aria-label="Closeness to original" className="flex-1 accent-[var(--acc)]" /><small className="w-16 text-right font-mono text-[10.5px] text-ink-3">Faithful</small></div>
+            <div className="text-[12.5px] text-ink-2">{closenessLabel(st.closeness)}</div>
+            <Lbl><span className="mt-4 inline-block">Tempo</span></Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Tempo">
+              {[["keep", "Keep", `${Math.round(u.bpm || 0)} BPM`], ["match", "Match style", (presets.remix.find((p) => p.key === st.preset)?.bpm || Math.round(u.bpm || 0)) + " BPM"], ["custom", "Custom", "…"]].map(([k, l, sub]) => <button key={k} type="button" aria-pressed={st.tempo === k} onClick={() => set({ tempo: k })} className={`rounded-md px-1.5 py-2 text-[13px] leading-tight ${st.tempo === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{l}<small className="block text-[10.5px] font-normal text-ink-3">{sub}</small></button>)}
+            </div>
+            {st.tempo === "custom" && <input type="number" min="40" max="220" value={st.bpmCustom} onChange={(e) => set({ bpmCustom: e.target.value })} aria-label="Custom BPM" placeholder="BPM" className="mt-2 w-32 rounded-r-sm border border-line bg-sur px-3 py-2 font-mono text-ink outline-none focus:border-acc" />}
+            {bpm && u.bpm && Math.abs(bpm - u.bpm) > u.bpm * 0.15 && <div className="mt-2 rounded-r-sm border-l-2 border-amber bg-[rgba(245,182,64,.14)] px-2.5 py-2 text-[12.5px] text-ink-2">A tempo change over ~15% stretches your voice audibly. Consider keeping the tempo.</div>}
+            <Lbl><span className="mt-4 inline-block">Variations</span></Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Variations">{[1, 2, 3, 4].map((n) => <button key={n} type="button" aria-pressed={st.takes === n} onClick={() => set({ takes: n })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.takes === n ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{n}</button>)}</div>
+            <div className="mt-1.5 text-[12.5px] text-ink-2">Different seeds, same settings — pick your favourite. About a minute each.</div>
+          </div>
+        </div>
+      </>)}
 
       <div className="sticky bottom-24 mt-6 flex flex-wrap items-center gap-3.5 rounded-[14px] border border-line-2 bg-[color-mix(in_srgb,var(--sur)_94%,transparent)] px-3.5 py-3 backdrop-blur-md">
-        <div className="min-w-[200px] flex-1 text-[13px] text-ink-2"><b className="text-ink">{summary(s, presets.remix)}</b></div>
+        <div className="min-w-[200px] flex-1 text-[13px] text-ink-2"><b className="text-ink">{summary(s, presets.remix, presets.reimagine)}</b></div>
         <span className="font-mono text-[11.5px] text-ink-3">about {st.takes} min</span>
         <Btn onClick={f.toCheck}>Back</Btn>
-        <Btn primary disabled={!canRemix(s)} onClick={f.remix}><PlayIcon />Remix it</Btn>
+        <Btn primary disabled={!canRemix(s)} onClick={f.remix}><PlayIcon />{re ? "Reimagine it" : "Remix it"}</Btn>
       </div>
     </div>
   );
@@ -200,7 +250,7 @@ function Rendering({ f, presets }) {
   return (
     <div className="mx-auto mt-[5vh] max-w-[600px]">
       <h1 className="font-disp text-[28px] font-extrabold tracking-tight">Remixing “{f.state.upload?.title}”</h1>
-      <p className="mt-1 text-[13.5px] text-ink-2">{summary(f.state, presets.remix)}. You&apos;ll get the original and the remix side by side.</p>
+      <p className="mt-1 text-[13.5px] text-ink-2">{summary(f.state, presets.remix, presets.reimagine)}. You&apos;ll get the original and the new version side by side.</p>
       <div className="mt-5 grid gap-2">{(rows.length ? rows : [{ key: "queued", label: "Queued", state: "current" }]).map((r) => <div key={r.key} className={`flex items-center gap-3 rounded-r-sm border px-3.5 py-2.5 ${r.state === "current" ? "border-line-2 bg-sur text-ink" : "border-line bg-sur " + (r.state === "done" ? "text-ink-2" : "text-ink-3")}`}><span className={`grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] text-[11px] ${r.state === "done" ? "border-mint bg-mint text-[#052]" : r.state === "current" ? "animate-spin border-acc border-t-transparent" : "border-line-2"}`}>{r.state === "done" ? "✓" : ""}</span>{r.label}{r.key === "rendering" && n > 1 && <span className="ml-auto font-mono text-[11px] text-ink-3">×{n}</span>}</div>)}</div>
       <div className="mt-4 flex items-center justify-between font-mono text-[11.5px] text-ink-3"><span>usually about a minute per variation</span><Btn onClick={f.toStyle}>Back to style</Btn></div>
     </div>
@@ -212,17 +262,28 @@ function Result({ f, presets, player, onToast }) {
   const art = coverGradient(u.title + u.id);
   const orig = { id: `up:${u.id}`, url: `${API_URL}${u.audio_url}`, title: u.title, sub: "Original", art };
   const ready = s.batch.filter((r) => r.status === "ready");
-  const tracks = ready.map((r, i) => ({ id: r.id, url: `${API_URL}${r.mp3_url || r.audio_url}`, title: u.title, sub: `Remix ${String.fromCharCode(65 + i)} · seed ${r.seed}`, art }));
+  const brief = ready[0]?.brief;
+  // ONE name per version, used by the card, the play button's label and the player bar — they must never disagree.
+  const label = (i) => {
+    const word = brief ? "Version" : "Remix";
+    return ready.length > 1 ? `${word} ${String.fromCharCode(65 + i)}` : (brief ? "New version" : "Remix");
+  };
+  const tracks = ready.map((r, i) => ({ id: r.id, url: `${API_URL}${r.mp3_url || r.audio_url}`, title: u.title, sub: `${label(i)} · seed ${r.seed}`, art }));
   const list = [orig, ...tracks];
-  const label = (i) => (ready.length > 1 ? `Remix ${String.fromCharCode(65 + i)}` : "Remix");
-  const preset = presets.remix.find((p) => p.key === ready[0]?.preset_key);
+  const preset = brief ? null : presets.remix.find((p) => p.key === ready[0]?.preset_key);
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><h1 className="font-disp text-[30px] font-extrabold leading-none tracking-tight">{u.title} · {preset?.label || "Remix"}</h1>
-          <div className="mt-2 flex flex-wrap gap-1.5">{[MODES.find((m) => m[0] === ready[0]?.mode)?.[1], ready[0] && closenessLabel(ready[0].closeness * 100).split(" —")[0], ready[0]?.autotune && "auto-tune", ready[0]?.bpm_to ? `${Math.round(u.bpm)} → ${Math.round(ready[0].bpm_to)} BPM` : `${Math.round(u.bpm || 0)} BPM`, ready[0]?.render_seconds && `${Math.round(ready[0].render_seconds)} s each`].filter(Boolean).map((t) => <span key={t} className="rounded-[5px] bg-sur-2 px-2 py-0.5 font-mono text-[11px] text-ink-2">{t}</span>)}</div></div>
+        <div><h1 className="font-disp text-[30px] font-extrabold leading-none tracking-tight">{brief ? brief.title : `${u.title} · ${preset?.label || "Remix"}`}</h1>
+          <div className="mt-2 flex flex-wrap gap-1.5">{[brief ? `Reimagined · ${ready[0]?.direction || ""}` : MODES.find((m) => m[0] === ready[0]?.mode)?.[1], ready[0] && closenessLabel(ready[0].closeness * 100).split(" —")[0], ready[0]?.autotune && "auto-tune", ready[0]?.bpm_to ? `${Math.round(u.bpm)} → ${Math.round(ready[0].bpm_to)} BPM` : `${Math.round(u.bpm || 0)} BPM`, ready[0]?.render_seconds && `${Math.round(ready[0].render_seconds)} s each`].filter(Boolean).map((t) => <span key={t} className="rounded-[5px] bg-sur-2 px-2 py-0.5 font-mono text-[11px] text-ink-2">{t}</span>)}</div></div>
         <div className="flex gap-1.5"><Btn onClick={f.toStyle}>Tweak</Btn><Btn onClick={() => { f.setStyle({}); f.toStyle(); }}>Another style</Btn></div>
       </div>
+      {brief && <section className="mt-4 rounded-[14px] border border-line bg-sur p-4" aria-labelledby="reading">
+        <h3 id="reading" className="mb-2 flex items-center gap-2 font-disp text-base font-bold">What Claude heard<span className="ml-auto font-mono text-[11px] text-ink-3">{brief.key} · {brief.bpm} BPM</span></h3>
+        <p className="text-[13.5px] text-ink-2">{brief.meaning}</p>
+        <p className="mt-2 text-[13.5px] text-ink-2"><b className="text-ink">The arc.</b> {brief.arc}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1">{(brief.structure || []).map((t, i) => <span key={i} className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[11px] ${/chorus|hook/i.test(t) ? "bg-[var(--vio-soft)] text-vio" : "bg-sur-3 text-ink-2"}`}>{String(t).replace(/[[\]]/g, "")}</span>)}</div>
+      </section>}
       {s.batch.some((r) => r.status === "failed") && <div className="mt-3 rounded-r-sm border-l-2 border-acc bg-[var(--acc-soft)] px-3 py-2 text-[13px]">{s.batch.filter((r) => r.status === "failed").length} variation(s) failed: {s.batch.find((r) => r.status === "failed")?.error}</div>}
       <div className="mt-4 grid gap-3.5 md:grid-cols-2">
         {list.map((t, i) => { const cur = player.isCurrent(t.id), r = i ? ready[i - 1] : null; return (

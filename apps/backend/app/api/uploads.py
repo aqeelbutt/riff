@@ -18,7 +18,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import Generation, Remix, RemixMode, Song, Stem, Upload, User
 from app.schemas import JobOut
-from app.services.presets import REMIX_PRESETS
+from app.services.presets import REIMAGINE_DIRECTIONS, REMIX_PRESETS
 from app.services.remix import delete_upload_files, enqueue_analyze, enqueue_remix, ffmpeg_to_wav
 from app.services.storage import get_storage
 
@@ -48,6 +48,9 @@ class RemixOut(BaseModel):
     chops: bool
     autotune: bool
     autotune_strength: float
+    direction: str | None
+    brief: dict | None
+    params: dict
     status: str
     seed: str | None
     lufs: float | None
@@ -88,6 +91,8 @@ class UploadPatch(BaseModel):
 
 
 class RemixIn(BaseModel):
+    """`mode` decides which catalogue `preset_key` comes from: reimagine* → REIMAGINE_DIRECTIONS, otherwise REMIX_PRESETS."""
+
     preset_key: str | None = None
     style: str | None = Field(default=None, max_length=600, description="free-text style; overrides the preset caption")
     mode: RemixMode = RemixMode.HYBRID
@@ -100,6 +105,7 @@ class RemixIn(BaseModel):
     autotune_strength: float = Field(default=0.85, ge=0, le=1)
     takes: int = Field(default=2, ge=1, le=4)
     moods: list[str] = Field(default_factory=list)
+    direction: str | None = Field(default=None, max_length=120, description="reimagine only: how to arrange it, e.g. 'emotional ballad'")
     lyrics: str | None = Field(default=None, max_length=8000, description="use these lyrics for this run instead of the transcription")
 
 
@@ -233,18 +239,23 @@ async def remix(upload_id: uuid.UUID, body: RemixIn, session: AsyncSession = Dep
     u = await _load(session, upload_id, user)
     if u.status.value != "analyzed":
         raise HTTPException(409, f"upload is {u.status.value}; wait for the analysis to finish")
-    preset = next((p for p in REMIX_PRESETS if p["key"] == body.preset_key), None) if body.preset_key else None
+    reimagining = body.mode.value.startswith("reimagine")
+    catalogue = REIMAGINE_DIRECTIONS if reimagining else REMIX_PRESETS
+    preset = next((p for p in catalogue if p["key"] == body.preset_key), None) if body.preset_key else None
     if body.preset_key and preset is None:
         raise HTTPException(422, "unknown preset")
+    if reimagining and not (u.lyrics or "").strip():
+        raise HTTPException(409, "no lyrics to work from — add them on the previous step, then reimagine")
     style = (body.style or (preset["caption"] if preset else None) or "").strip()
     if not style:
         raise HTTPException(422, "pick a preset or describe the style")
     if body.moods:
         style += ", " + ", ".join(m.lower() for m in body.moods)
     closeness = body.closeness if body.closeness != 0.45 or not preset else preset.get("closeness", 0.45)
+    direction = (body.direction or (preset["label"] if preset else None) or body.style or "").strip()[:120] if reimagining else None
     rows, job = await enqueue_remix(session, u, mode=body.mode, style=style, preset_key=body.preset_key, closeness=closeness, bpm_to=body.bpm_to,
                                     ai_forward=body.ai_forward, harmony=body.harmony, chops=body.chops, autotune=body.autotune,
-                                    autotune_strength=body.autotune_strength, takes=body.takes, lyrics_override=body.lyrics)
+                                    autotune_strength=body.autotune_strength, takes=body.takes, lyrics_override=body.lyrics, direction=direction)
     return {"remixes": [remix_out(r).model_dump(mode="json") for r in rows], "job": JobOut.model_validate(job, from_attributes=True).model_dump(mode="json")}
 
 

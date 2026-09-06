@@ -17,6 +17,8 @@ from app.services.music.base import CoverRequest, ProgressCb, ProviderError, Ren
 class FakeProvider:
     name = "fake"
     fail_next: int = 0  # tests set this to simulate a crashed engine
+    last_render = None  # tests assert which path a mode took
+    last_cover = None
 
     async def health(self) -> dict:
         return {"ok": True, "service": "fake"}
@@ -46,6 +48,7 @@ class FakeProvider:
             takes.append(RenderedTake(path=path, seed=str(seed), model="fake-v1", metas={"bpm": bpm, "duration": dur}))
         if on_progress:
             await on_progress("decoding")
+        self.last_render = req
         return RenderResult(takes=takes, provider=self.name, render_seconds=round(time.time() - t0, 3))
 
     async def cover(self, req: CoverRequest, on_progress: ProgressCb | None = None) -> RenderResult:
