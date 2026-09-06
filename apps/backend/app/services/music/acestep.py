@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 
 from app.core.config import get_settings
-from app.services.music.base import ProgressCb, ProviderError, RenderRequest, RenderResult, RenderedTake
+from app.services.music.base import CoverRequest, ProgressCb, ProviderError, RenderRequest, RenderResult, RenderedTake
 
 
 class ACEStepProvider:
@@ -92,6 +92,45 @@ class ACEStepProvider:
         except httpx.HTTPError as exc:
             raise ProviderError(f"engine request failed: {exc}") from exc
         return RenderResult(takes=takes, provider=self.name, render_seconds=round(time.time() - t0, 1), raw={"request": body})
+
+    async def cover(self, req: CoverRequest, on_progress: ProgressCb | None = None) -> RenderResult:
+        """ACE-Step cover: multipart with the source file (the JSON form needs a server-absolute path; multipart is portable)."""
+        t0 = time.time()
+        fields = {
+            "prompt": req.style, "task_type": "cover", "audio_cover_strength": str(req.strength), "inference_steps": "8", "shift": "3",
+            "model": self.default_model, "batch_size": "1", "audio_format": "wav", "thinking": "false", "lyrics": req.lyrics or "",
+            "vocal_language": req.vocal_language or "en", "use_random_seed": "false" if req.seed is not None else "true",
+        }
+        if req.seed is not None:
+            fields["seed"] = str(req.seed)
+        if req.bpm:
+            fields["bpm"] = str(int(req.bpm))
+        try:
+            async with httpx.AsyncClient(base_url=self.base_url, timeout=httpx.Timeout(self.timeout_s, connect=10)) as c:
+                with open(req.src_path, "rb") as fh:
+                    r = await c.post("/release_task", data=fields, files={"src_audio": (req.src_path.name, fh, "audio/wav")})
+                r.raise_for_status()
+                task_id = r.json()["data"]["task_id"]
+                if on_progress:
+                    await on_progress("rendering")
+                item = await self._poll(c, task_id)
+                if on_progress:
+                    await on_progress("decoding")
+                result = item.get("result")
+                if isinstance(result, str):
+                    result = json.loads(result)
+                a = (result if isinstance(result, list) else [result])[0]
+                req.out_dir.mkdir(parents=True, exist_ok=True)
+                dest = req.out_dir / f"cover-{uuid.uuid4().hex[:8]}.wav"
+                async with c.stream("GET", a.get("file")) as resp:
+                    resp.raise_for_status()
+                    with open(dest, "wb") as f:
+                        async for chunk in resp.aiter_bytes():
+                            f.write(chunk)
+                take = RenderedTake(path=dest, seed=str(a.get("seed_value") or "").split(",")[0].strip() or None, model=a.get("dit_model"), metas=a.get("metas") or {})
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"engine request failed: {exc}") from exc
+        return RenderResult(takes=[take], provider=self.name, render_seconds=round(time.time() - t0, 1), raw={"request": {k: v for k, v in fields.items() if k != "lyrics"}})
 
     async def _poll(self, c: httpx.AsyncClient, task_id: str) -> dict:
         deadline = time.time() + self.timeout_s

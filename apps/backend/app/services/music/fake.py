@@ -11,7 +11,7 @@ import time
 import uuid
 import wave
 
-from app.services.music.base import ProgressCb, ProviderError, RenderRequest, RenderResult, RenderedTake
+from app.services.music.base import CoverRequest, ProgressCb, ProviderError, RenderRequest, RenderResult, RenderedTake
 
 
 class FakeProvider:
@@ -47,3 +47,22 @@ class FakeProvider:
         if on_progress:
             await on_progress("decoding")
         return RenderResult(takes=takes, provider=self.name, render_seconds=round(time.time() - t0, 3))
+
+    async def cover(self, req: CoverRequest, on_progress: ProgressCb | None = None) -> RenderResult:
+        if self.fail_next > 0:
+            self.fail_next -= 1
+            raise ProviderError("simulated engine failure")
+        t0 = time.time()
+        if on_progress:
+            await on_progress("rendering")
+        req.out_dir.mkdir(parents=True, exist_ok=True)
+        path = req.out_dir / f"cover-{uuid.uuid4().hex[:8]}.wav"
+        sr, dur = 16000, 3
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
+            w.writeframes(b"".join(struct.pack("<h", int(3000 * math.sin(2 * math.pi * 196 * n / sr))) for n in range(sr * dur)))
+        self.last_cover = req
+        if on_progress:
+            await on_progress("decoding")
+        return RenderResult(takes=[RenderedTake(path=path, seed=str(req.seed or 4242), model="fake-v1", metas={"bpm": req.bpm})],
+                            provider=self.name, render_seconds=round(time.time() - t0, 3))

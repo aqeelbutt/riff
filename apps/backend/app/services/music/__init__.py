@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from app.core.config import get_settings
-from app.services.music.base import MusicProvider, ProviderError, RenderRequest, RenderResult, RenderedTake
+from app.services.music.base import CoverRequest, MusicProvider, ProviderError, RenderRequest, RenderResult, RenderedTake
 
 _override: MusicProvider | None = None
 
@@ -24,4 +24,4 @@ def get_provider() -> MusicProvider:
     return ACEStepProvider()
 
 
-__all__ = ["get_provider", "set_provider", "MusicProvider", "ProviderError", "RenderRequest", "RenderResult", "RenderedTake"]
+__all__ = ["get_provider", "set_provider", "CoverRequest", "MusicProvider", "ProviderError", "RenderRequest", "RenderResult", "RenderedTake"]

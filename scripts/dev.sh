@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `pnpm dev`: Postgres + Redis (docker) → migrations → music engine → API (:8010) → web (:3000). Ctrl-C stops all.
+# `pnpm dev`: Postgres + Redis (docker) → migrations → music engine → API (:8010) → web (:3010). Ctrl-C stops all.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"; export PATH="$HOME/.local/bin:$ROOT/bin:$PATH"
 docker compose up -d
@@ -13,5 +13,5 @@ API=$!
 (cd apps/web && exec pnpm dev) &
 WEB=$!
 trap 'kill $API $WEB 2>/dev/null; exit 0' INT TERM
-echo; echo "  API   http://127.0.0.1:8010/health"; echo "  Web   http://localhost:3000"; echo "  Engine http://127.0.0.1:8001/health"; echo
+echo; echo "  API   http://127.0.0.1:8010/health"; echo "  Web   http://localhost:3010"; echo "  Engine http://127.0.0.1:8001/health"; echo
 wait

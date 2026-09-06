@@ -1,6 +1,8 @@
 "use client";
 /** The Create screen — the approved mock, wired to the API. Layout: Compose column | Stage; persistent player. */
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import { API_URL } from "@/lib/api";
 import { fmt } from "@/features/player/usePlayer";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
@@ -243,6 +245,8 @@ function Rendering({ f }) {
 /* ---------------- stage: result ---------------- */
 function Result({ f, player, onToast }) {
   const { state: s } = f;
+  const router = useRouter();
+  const toRemix = async (g) => { try { const { upload } = await api(`/uploads/from-generation/${g.id}`, { method: "POST" }); router.push(`/remix?upload=${upload.id}`); } catch (e) { onToast(e.message); } };
   const url = (g) => `${API_URL}${g.mp3_url || g.audio_url}`;
   const trackOf = (g, i) => ({ id: g.id, url: url(g), title: s.song?.title, sub: `Take ${String.fromCharCode(65 + i)} · seed ${g.seed}` });
   const list = s.takes.map(trackOf);
@@ -266,12 +270,12 @@ function Result({ f, player, onToast }) {
                 <span className="font-mono text-xs text-ink-2">{on ? fmt(player.now.t) : "0:00"} / {fmt(g.duration_s)}</span>
                 <span className="ml-auto flex gap-1.5">
                   <a href={u} download className="rounded-r-sm border border-line bg-sur-2 px-2.5 py-1.5 text-[12.5px]">Download</a>
-                  <button type="button" onClick={() => onToast("Remix lands in Phase 4")} className="rounded-r-sm border border-line bg-sur-2 px-2.5 py-1.5 text-[12.5px]">Remix</button></span>
+                  <button type="button" onClick={() => toRemix(g)} className="rounded-r-sm border border-line bg-sur-2 px-2.5 py-1.5 text-[12.5px]">Remix</button></span>
               </div>
             </div>);
         })}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2.5"><span className="text-[13px] text-ink-2">Like one? Keep it, then</span><button type="button" onClick={() => onToast("Remix lands in Phase 4")} className="rounded-r-sm border border-line bg-sur-2 px-3 py-1.5 text-[13px]">Remix this →</button><span className="flex-1" /><button type="button" onClick={() => { player.stop(); f.reset(); }} className="px-2 py-1.5 text-ink-2 hover:text-ink">New song</button></div>
+      <div className="mt-4 flex flex-wrap items-center gap-2.5"><span className="text-[13px] text-ink-2">Like one? Keep it, then</span><button type="button" onClick={() => s.takes[0] && toRemix(s.takes.find((g) => g.is_favorite) || s.takes[0])} className="rounded-r-sm border border-line bg-sur-2 px-3 py-1.5 text-[13px]">Remix this →</button><span className="flex-1" /><button type="button" onClick={() => { player.stop(); f.reset(); }} className="px-2 py-1.5 text-ink-2 hover:text-ink">New song</button></div>
     </div>
   );
 }

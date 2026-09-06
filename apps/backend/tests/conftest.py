@@ -13,6 +13,7 @@ os.environ.setdefault("MUSIC_PROVIDER", "fake")
 os.environ.setdefault("WORKER_ENABLED", "false")
 os.environ.setdefault("MASTERING_ENABLED", "false")
 os.environ.setdefault("LYRICS_PROVIDER", "fake")
+os.environ.setdefault("AUDIO_TOOLS", "fake")
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://riff:riff_dev@localhost:5433/riff_test")
 
@@ -31,6 +32,7 @@ from app.services.music import set_provider  # noqa: E402
 from app.services.music.fake import FakeProvider  # noqa: E402
 from app.services.ai import telemetry as telemetry_mod  # noqa: E402
 from app.services.ai.lyrics import FakeLyrics, set_lyrics_provider  # noqa: E402
+from app.services.audio.tools import FakeAudioTools, set_audio_tools  # noqa: E402
 
 TEST_URL = os.environ["DATABASE_URL"]
 ADMIN_URL = TEST_URL.rsplit("/", 1)[0] + "/riff"
@@ -51,7 +53,7 @@ async def _schema():
     await _ensure_db()
     async with test_engine.begin() as c:
         await c.run_sync(Base.metadata.drop_all)
-        for e in ("song_status", "job_status"):
+        for e in ("song_status", "job_status", "upload_status", "remix_mode"):
             await c.execute(text(f"DROP TYPE IF EXISTS {e} CASCADE"))
         await c.run_sync(Base.metadata.create_all)
     yield
@@ -62,7 +64,7 @@ async def _schema():
 async def _clean_tables():
     yield
     async with test_engine.begin() as c:
-        await c.execute(text("TRUNCATE TABLE generations, jobs, songs, users, ai_call_telemetry RESTART IDENTITY CASCADE"))
+        await c.execute(text("TRUNCATE TABLE remixes, stems, uploads, generations, jobs, songs, users, ai_call_telemetry RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture(autouse=True)
@@ -79,6 +81,14 @@ def fake_lyrics():
     set_lyrics_provider(p)
     yield p
     set_lyrics_provider(None)
+
+
+@pytest.fixture(autouse=True)
+def fake_tools():
+    t = FakeAudioTools()
+    set_audio_tools(t)
+    yield t
+    set_audio_tools(None)
 
 
 @pytest.fixture(autouse=True)

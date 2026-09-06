@@ -72,7 +72,7 @@ export default function SongPage({ id }) {
         <div className="flex flex-wrap gap-1.5">
           {first && <button type="button" onClick={() => player.toggle(trackOf(song, first), all)} className="flex items-center gap-2 rounded-r-sm bg-acc px-3.5 py-2 text-[13.5px] font-semibold text-[#1A0C06] hover:bg-acc-2"><PlayIcon playing={player.isCurrent(first.id) && player.now.playing} />Play</button>}
           <button type="button" onClick={moreTakes} disabled={rendering} className="rounded-r-sm border border-line bg-sur-2 px-3.5 py-2 text-[13.5px] font-semibold disabled:opacity-50">{rendering ? "Rendering…" : "2 more takes"}</button>
-          <button type="button" onClick={() => setToast("Remix lands in Phase 4")} className="rounded-r-sm border border-line bg-sur-2 px-3.5 py-2 text-[13.5px] font-semibold">Remix</button>
+          <button type="button" onClick={async () => { const g = first; if (!g) return; try { const { upload } = await api(`/uploads/from-generation/${g.id}`, { method: "POST" }); router.push(`/remix?upload=${upload.id}`); } catch (e) { setToast(e.message); } }} className="rounded-r-sm border border-line bg-sur-2 px-3.5 py-2 text-[13.5px] font-semibold">Remix</button>
           <button type="button" onClick={() => setConfirm(true)} className="rounded-r-sm border border-line px-3.5 py-2 text-[13.5px] font-semibold text-acc">Delete</button>
         </div>
       </div>

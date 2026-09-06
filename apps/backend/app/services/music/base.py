@@ -40,12 +40,28 @@ class RenderResult:
     raw: dict = field(default_factory=dict)
 
 
+@dataclass
+class CoverRequest:
+    """Re-render an existing recording in a new style (ACE-Step `cover`). strength = closeness to the source."""
+
+    src_path: Path
+    style: str
+    lyrics: str = ""  # empty ⇒ instrumental output
+    strength: float = 0.45
+    bpm: int | None = None
+    vocal_language: str = "en"
+    seed: int | None = None
+    out_dir: Path = field(default_factory=lambda: Path("."))
+
+
 class MusicProvider(Protocol):
     name: str
 
     async def health(self) -> dict: ...
 
     async def render(self, req: RenderRequest, on_progress: ProgressCb | None = None) -> RenderResult: ...
+
+    async def cover(self, req: CoverRequest, on_progress: ProgressCb | None = None) -> RenderResult: ...
 
 
 class ProviderError(RuntimeError):

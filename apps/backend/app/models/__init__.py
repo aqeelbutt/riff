@@ -31,6 +31,20 @@ class SongStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class UploadStatus(str, enum.Enum):
+    UPLOADED = "uploaded"
+    ANALYZING = "analyzing"
+    ANALYZED = "analyzed"
+    FAILED = "failed"
+
+
+class RemixMode(str, enum.Enum):
+    HYBRID = "hybrid"  # real lead over an AI cover WITH backing vocals (the user's pick)
+    KEEP = "keep"  # real lead over a new instrumental bed
+    RESING = "resing"  # the AI sings the transcribed lyrics
+    INSTRUMENTAL = "instrumental"
+
+
 class JobStatus(str, enum.Enum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -120,3 +134,76 @@ class Job(Base):
         Index("ux_jobs_idem_active", "idempotency_key", unique=True,
               postgresql_where="status IN ('QUEUED','RUNNING')"),
     )
+
+
+class Upload(Base):
+    """A song the user brought in (or promoted from a generation) to remix. Analysis = stems + tempo/key + lyrics."""
+
+    __tablename__ = "uploads"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    filename: Mapped[str] = mapped_column(String(255))
+    source_path: Mapped[str] = mapped_column(String(500))  # media-relative WAV (normalized copy of the upload)
+    rights_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    from_generation_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("generations.id", ondelete="SET NULL"))
+    vocal_language: Mapped[str] = mapped_column(String(8), default="en")
+    status: Mapped[UploadStatus] = mapped_column(Enum(UploadStatus, name="upload_status"), default=UploadStatus.UPLOADED)
+    duration_s: Mapped[float | None] = mapped_column(Float)
+    bpm: Mapped[float | None] = mapped_column(Float)
+    key: Mapped[str | None] = mapped_column(String(24))
+    lufs: Mapped[float | None] = mapped_column(Float)
+    lyrics: Mapped[str | None] = mapped_column(Text)  # transcribed (Whisper), user-editable
+    lyrics_segments: Mapped[list | None] = mapped_column(JSON)  # [{start, end, text}]
+    analysis: Mapped[dict | None] = mapped_column(JSON)  # stem energy split, timings, tool versions
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    stems: Mapped[list["Stem"]] = relationship(back_populates="upload", cascade="all, delete-orphan")
+    remixes: Mapped[list["Remix"]] = relationship(back_populates="upload", cascade="all, delete-orphan")
+
+
+class Stem(Base):
+    __tablename__ = "stems"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    upload_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("uploads.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # vocals | drums | bass | other | instrumental
+    path: Mapped[str] = mapped_column(String(500))
+    energy_share: Mapped[float | None] = mapped_column(Float)
+
+    upload: Mapped[Upload] = relationship(back_populates="stems")
+
+
+class Remix(Base):
+    """One remix run of an upload. Output is a mastered WAV + MP3 like a Generation."""
+
+    __tablename__ = "remixes"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    upload_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("uploads.id", ondelete="CASCADE"), index=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    mode: Mapped[RemixMode] = mapped_column(Enum(RemixMode, name="remix_mode"), default=RemixMode.HYBRID)
+    preset_key: Mapped[str | None] = mapped_column(String(40))
+    style: Mapped[str] = mapped_column(Text)  # the engine caption actually sent
+    closeness: Mapped[float] = mapped_column(Float, default=0.45)
+    bpm_to: Mapped[float | None] = mapped_column(Float)
+    ai_forward: Mapped[int] = mapped_column(Integer, default=1)  # -3 (way back) … 4 (front)
+    harmony: Mapped[str] = mapped_column(String(20), default="")  # opt-in; the lead stays clean by default
+    chops: Mapped[bool] = mapped_column(default=False)
+    autotune: Mapped[bool] = mapped_column(default=True)  # pitch-correct the real vocal to the song's key (default ON)
+    autotune_strength: Mapped[float] = mapped_column(Float, default=0.85)  # 0 = untouched … 1 = hard snap
+    batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_uuid, index=True)  # one run = N variations
+    take_index: Mapped[int] = mapped_column(Integer, default=1)
+    params: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="queued")  # queued | rendering | ready | failed
+    wav_path: Mapped[str | None] = mapped_column(String(500))
+    mp3_path: Mapped[str | None] = mapped_column(String(500))
+    lufs: Mapped[float | None] = mapped_column(Float)
+    duration_s: Mapped[float | None] = mapped_column(Float)
+    render_seconds: Mapped[float | None] = mapped_column(Float)
+    seed: Mapped[str | None] = mapped_column(String(40))
+    is_favorite: Mapped[bool] = mapped_column(default=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    upload: Mapped[Upload] = relationship(back_populates="remixes")

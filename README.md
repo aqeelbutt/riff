@@ -2,7 +2,7 @@
 
 An AI music studio in the spirit of Suno, running entirely on your own Mac. Give it lyrics and a style and it renders a full song with vocals in about 30 seconds. Drop in a song you own and it separates your vocal, extracts the lyrics, and rebuilds the music around your real voice in any style — deep house, sufi house, jazz-rap, rap-rock, afro house, or anything you can describe.
 
-**Status:** Phase 3 complete — **Create and Library are live**: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac → every song lives in the Library with search, filters, keep, A/B, download, rename and delete, and a player that follows you between pages. The Remix screen lands in Phase 4 — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
+**Status:** Phase 4 complete — **Create, Library and Remix are live.** Create: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac. Remix: drop in a song you own (or one of your own takes) → stems, tempo, key and lyrics are extracted → pick a style → your real vocal comes back **auto-tuned and in front** with the AI performing around it, two variations per run. Phase 5 (harden + 1.0.0) is next — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
 
 ---
 
@@ -36,10 +36,12 @@ pnpm dev
 
 | What | Where |
 |---|---|
-| Web — **Create**, **Library**, Status; Remix in Phase 4 | http://localhost:3000 |
+| Web — **Create**, **Library**, **Remix**, Status | http://localhost:3010 |
 | API (OpenAPI docs at `/docs`) | http://127.0.0.1:8010 |
 | Music engine | http://127.0.0.1:8001 |
 | Postgres / Redis (docker) | localhost:5433 / localhost:6380 |
+
+Ports are chosen to never collide with PursuitAI (which uses 3000 / 8000 / 5432 / 6379): Riff is web **3010**, API **8010**, Postgres **5433**, Redis **6380**, engine **8001**; the E2E uses 3100 / 8011.
 
 Just the engine, for the command line:
 
@@ -67,13 +69,13 @@ The engine keeps running in the background; logs are in `var/log/engine.log`. It
 
 ## 4. Create a song (web)
 
-Open http://localhost:3000, type what the song is about, pick a style, mood, voice and language, and press **Write lyrics**. Claude returns a brief (three titles, tempo, key, mood, structure) in ~8 s, then the full lyrics stream in section by section. Hover any section to **Rewrite**, **Shorter** or **Remove** it, or click into it and type. Press **Generate 2 takes** — the render runs on your Mac (~1 min on Fast), the page shows real stage progress, and you get two takes with waveforms, play/A-B, keep and download. Reloading mid-render re-attaches to the running job instead of starting another.
+Open http://localhost:3010, type what the song is about, pick a style, mood, voice and language, and press **Write lyrics**. Claude returns a brief (three titles, tempo, key, mood, structure) in ~8 s, then the full lyrics stream in section by section. Hover any section to **Rewrite**, **Shorter** or **Remove** it, or click into it and type. Press **Generate 2 takes** — the render runs on your Mac (~1 min on Fast), the page shows real stage progress, and you get two takes with waveforms, play/A-B, keep and download. Reloading mid-render re-attaches to the running job instead of starting another.
 
 Claude needs `ANTHROPIC_API_KEY` in `apps/backend/.env`. Without it the app runs on a placeholder lyrics provider (fine for trying the screens; the words will be dummy).
 
 ## 4a. Your Library
 
-http://localhost:3000/library lists every song: search by title, style or lyric line; filter **Kept** / Ready / Rendering; sort by newest, title or number of takes. Hover a card to play its kept (or newest) take; the player bar stays with you as you move around the app, with A/B between a song's takes. Open a song to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own.
+http://localhost:3010/library lists every song: search by title, style or lyric line; filter **Kept** / Ready / Rendering; sort by newest, title or number of takes. Hover a card to play its kept (or newest) take; the player bar stays with you as you move around the app, with A/B between a song's takes. Open a song to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own.
 
 ## 4b. Create a song (command line)
 
@@ -105,7 +107,20 @@ Options:
 
 Ready-made lyric files to try: `spike/lyrics/{pop,hiphop,folk,rock,jazzrap,raprock,hindi-roman,urdu-roman}.txt`. Style ideas that are verified to work: *jazz rap with Rhodes and upright bass*, *rap rock mashup with rapped verses and a huge sung chorus*, *romantic Bollywood ballad with sitar and tabla*, *Pakistani sufi pop with harmonium and dholak*, *warm acoustic folk-country*, *modern trap hip-hop*.
 
-## 5. Remix a song you own
+## 5. Remix a song you own (web)
+
+http://localhost:3010/remix. Drop in an MP3/WAV/M4A/FLAC you own (tick the rights box first) or pick one of your own Riff songs, choose the language it's sung in, and the analysis runs on your Mac (about a minute): the vocal, drums, bass and other parts are separated (solo any of them), tempo, key and loudness are measured, and the lyrics are transcribed from the isolated vocal — fix any line before you continue. Then pick a style (Deep House, Chill Deep House, Desi Deep House, Sufi House, Afro House, Boom-Bap Flip, Jazz-Rap layout, Rap-Rock, Lo-fi, Synthwave, Drum & Bass, Acoustic, Orchestral, or describe your own), a mood, and how your voice is treated:
+
+| Your voice | What happens |
+|---|---|
+| **Your voice + AI backing** *(default)* | your real vocal is the lead; the AI performs the new music and backing vocals, which are separated out and **ducked under you** so they answer in the gaps instead of colliding |
+| Your voice only | your real vocal over a brand-new instrumental |
+| AI sings it | the AI re-sings your transcribed lyrics in the new style |
+| Instrumental | music only |
+
+**Auto-tune is on by default** (85 %): your lead is pitch-corrected note by note to the song's key, formant-preserving, so it comes out smoother but still you. Harmonies and a vocal-chop intro are opt-in. Every run renders **two variations** (different seeds; choose 1–4). The result page plays the original and each variation side by side with "Switch A/B at the same spot", keep and download; "Tweak" and "Another style" reuse the analysis so a new direction is one click and about a minute.
+
+## 5b. Remix from the command line
 
 ```bash
 riff remix ~/Music/my-song.mp3 --lang ur \
