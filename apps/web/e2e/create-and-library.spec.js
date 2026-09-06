@@ -33,7 +33,7 @@ test("a song goes from a few words to the library", async ({ page }) => {
   await expect(page.getByLabel("Now playing")).toBeVisible();
 
   // library shows it; the player survives navigation
-  await page.getByRole("link", { name: "Library" }).click();
+  await page.getByLabel("Main").getByRole("link", { name: "Library" }).click();
   await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
   const card = page.getByRole("link", { name: /Run With Me/ });
   await expect(card).toBeVisible();

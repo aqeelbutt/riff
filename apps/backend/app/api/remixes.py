@@ -12,6 +12,8 @@ from app.api.uploads import RemixOut, remix_out
 from app.core.auth import current_user
 from app.core.database import get_db
 from app.models import Remix, User
+from app.schemas import JobOut
+from app.services.align import enqueue_align
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/remixes", tags=["remixes"])
@@ -75,3 +77,12 @@ async def delete_remix(rid: uuid.UUID, session: AsyncSession = Depends(get_db), 
                 p.unlink(missing_ok=True)
     await session.delete(r)
     await session.commit()
+
+
+@router.post("/{rid}/align", response_model=JobOut, status_code=202)
+async def align(rid: uuid.UUID, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> JobOut:
+    r = await _load(session, rid, user)
+    if not r.wav_path:
+        raise HTTPException(409, "nothing rendered to align yet")
+    job = await enqueue_align(session, kind="remix", row_id=r.id, user_id=user.id)
+    return JobOut.model_validate(job, from_attributes=True)

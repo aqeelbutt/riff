@@ -75,7 +75,15 @@ Claude needs `ANTHROPIC_API_KEY` in `apps/backend/.env`. Without it the app runs
 
 ## 4a. Your Library
 
-http://localhost:3010/library lists every song: search by title, style or lyric line; filter **Kept** / Ready / Rendering; sort by newest, title or number of takes. Hover a card to play its kept (or newest) take; the player bar stays with you as you move around the app, with A/B between a song's takes. Open a song to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own.
+http://localhost:3010/library is everything you've made **and everything you've remixed**, in one grid — songs you wrote, and songs you uploaded and remixed, the latter marked **remix** with their version count. Search by title, style or lyric line; filter All / Songs / Remixes / **Kept**; sort by newest, title or number of takes. Hover a card to play its kept (or newest) version; the player bar stays with you as you move around the app, with A/B between takes.
+
+Open a **song** to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own. Open a **remixed upload** to see the original, every version grouped by run, the separated stems, and keep/download/delete per version — plus **New version** to run the remix again with different settings.
+
+### Lyrics that follow the audio
+
+On either page, press **≡** next to a take or version to sync its lyrics to that audio. Whisper listens to that exact render, lines up your lyrics with what it heard, and from then on the lyric panel follows playback: the line that's sounding is lit, it scrolls itself into view, and clicking any line jumps the player there. Timings are stored per audio file, not per song, because two takes of the same lyric sing it differently.
+
+One honest caveat: for Hindi, Urdu, Punjabi and Bengali we write the lyrics in Roman script (it sounds better) while Whisper transcribes in the native script, so the words can't be matched line-to-line. When that happens the lines are spread evenly across what was heard and the panel tells you the timing is approximate — the words are right, the positions are a good guess.
 
 ## 4b. Create a song (command line)
 

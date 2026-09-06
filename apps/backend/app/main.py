@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import app.services.generation  # noqa: F401 — registers the `render` job handler
 import app.services.remix  # noqa: F401 — registers `analyze` + `remix`
+import app.services.align  # noqa: F401 — registers `align`
 from app.api import generations, health, jobs, lyrics, presets, remixes, songs, uploads
 import app.services.ai.telemetry  # noqa: F401 — registers the AiCallTelemetry table
 from app.core.config import get_settings

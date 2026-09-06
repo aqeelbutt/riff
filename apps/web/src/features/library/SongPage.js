@@ -5,6 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
 import { coverGradient, fmtDur, keptCount, takeLabel, takesByBatch } from "@/lib/library";
 import { parseSections } from "@/lib/lyrics";
+import { isSynced } from "@/lib/lyricSync";
+import { LyricSync } from "@/features/player/LyricSync";
+import { useAlign } from "@/features/player/useAlign";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
 import { Wave } from "@/features/player/Wave";
@@ -26,6 +29,7 @@ export default function SongPage({ id }) {
   const load = useCallback(() => api(`/songs/${id}`).then(setSong).catch(() => setMissing(true)), [id]);
   useEffect(() => { load(); }, [load]);
 
+  const { align, busyId } = useAlign({ kind: "generations", onDone: () => load() });
   const { job, track } = useJob({ songId: id, onDone: (j) => { load(); setToast(j.status === "done" ? "New takes are in" : `Render ${j.status}`); } });
   const rendering = job && !["done", "failed", "cancelled"].includes(job.status);
   useEffect(() => { if (!song || song.status !== "rendering" || rendering) return; const t = setInterval(load, 5000); return () => clearInterval(t); }, [song, rendering, load]);
@@ -58,6 +62,8 @@ export default function SongPage({ id }) {
   const all = song.generations.map((g) => trackOf(song, g));
   const first = song.generations.find((g) => g.is_favorite) || batches[0]?.takes[0];
   const sections = parseSections(song.lyrics || "");
+  // the lyrics follow whichever take is loaded in the player, since each take sings the words differently
+  const playingTake = song.generations.find((g) => player.isCurrent(g.id)) || first;
 
   return (
     <main className="mx-auto max-w-[1100px] px-6 pb-28 pt-6">
@@ -108,9 +114,16 @@ export default function SongPage({ id }) {
             </div>))}
         </section>
         <section className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="lyrics">
-          <h3 id="lyrics" className="mb-3 flex items-center font-disp text-base font-bold">Lyrics<span className="ml-auto font-mono text-[11px] text-ink-3">{song.vocal_language.toUpperCase()}</span></h3>
-          {sections.length === 0 ? <p className="text-ink-2">Instrumental.</p> : (
-            <div className="max-h-[560px] overflow-auto text-sm leading-relaxed">{sections.map((s, i) => <div key={i} className={i ? "mt-3" : ""}><div className="font-mono text-[11px] text-vio">[{s.tag}]</div><div className="whitespace-pre-wrap">{s.lines.join("\n")}</div></div>)}</div>)}
+          <h3 id="lyrics" className="mb-3 flex items-center gap-2 font-disp text-base font-bold">Lyrics
+            <span className="ml-auto font-mono text-[11px] text-ink-3">{song.vocal_language.toUpperCase()}</span>
+            {playingTake && !isSynced(playingTake.lyrics_segments) && <button type="button" onClick={() => align(playingTake.id)} disabled={busyId === playingTake.id}
+              className="rounded-md border border-line px-2 py-1 font-sans text-[11.5px] font-medium text-ink-2 hover:text-ink disabled:opacity-50">{busyId === playingTake.id ? "Listening…" : "Sync to audio"}</button>}
+          </h3>
+          {playingTake && isSynced(playingTake.lyrics_segments)
+            ? <LyricSync segments={playingTake.lyrics_segments} time={player.now.t} live onSeek={(t) => { if (player.now.d) player.seek(t / player.now.d); }} maxHeight={560} />
+            : sections.length === 0 ? <p className="text-ink-2">Instrumental.</p> : (
+              <div className="max-h-[560px] overflow-auto text-sm leading-relaxed">{sections.map((s, i) => <div key={i} className={i ? "mt-3" : ""}><div className="font-mono text-[11px] text-vio">[{s.tag}]</div><div className="whitespace-pre-wrap">{s.lines.join("\n")}</div></div>)}</div>)}
+          {playingTake && !isSynced(playingTake.lyrics_segments) && <p className="mt-2 text-[12px] text-ink-3">Play a take and hit <b>Sync to audio</b> to have the words follow along.</p>}
         </section>
       </div>
 

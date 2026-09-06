@@ -48,6 +48,7 @@ class GenerationOut(BaseModel):
     lufs: float | None
     render_seconds: float | None
     is_favorite: bool
+    lyrics_segments: list | None
     audio_url: str
     mp3_url: str | None
     created_at: datetime
