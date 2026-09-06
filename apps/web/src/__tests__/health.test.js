@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { songRows, summarizeHealth } from "@/lib/health";
+import { engineNotice, songRows, summarizeHealth } from "@/lib/health";
 
 describe("summarizeHealth", () => {
   it("reports the API down when there is no payload", () => {
@@ -29,5 +29,22 @@ describe("songRows", () => {
     ]);
     expect(rows.map((r) => r.title)).toEqual(["New", "Old"]);
     expect(rows[1].takes).toBe(2);
+  });
+});
+
+describe("engineNotice", () => {
+  const ok = { db: { ok: true }, engine: { ok: true }, worker: { enabled: true, running: true } };
+  it("says nothing before the first check or when everything is up", () => {
+    expect(engineNotice(undefined)).toBe(null);
+    expect(engineNotice(ok)).toBe(null);
+  });
+  it("names the one thing that's down, with the command to fix it", () => {
+    expect(engineNotice(null)).toMatchObject({ command: "pnpm dev" });
+    expect(engineNotice({ ...ok, db: { ok: false } })).toMatchObject({ command: "pnpm docker:up" });
+    expect(engineNotice({ ...ok, engine: { ok: false } })).toMatchObject({ title: "The music engine is offline", command: "scripts/engine.sh start" });
+    expect(engineNotice({ ...ok, worker: { enabled: true, running: false } })).toMatchObject({ title: "The render worker isn't running" });
+  });
+  it("prefers the deepest failure — a dead API isn't reported as a dead engine", () => {
+    expect(engineNotice({ db: { ok: false }, engine: { ok: false }, worker: { running: false } }).command).toBe("pnpm docker:up");
   });
 });

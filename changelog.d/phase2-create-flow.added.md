@@ -1,1 +1,0 @@
-- Create screen (Phase 2): Claude writes a structured song brief and streams the lyrics into a section editor with per-section rewrites; generate two takes with real stage progress, waveforms, A/B and keep. `POST /lyrics/{brief,write,section}` with per-call `ai_call_telemetry` (tokens + USD).

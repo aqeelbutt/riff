@@ -1,1 +1,0 @@
-- Create: the compose panel collapses to a rail and can be widened (remembered); Voice and Language each get a full row so nothing overlaps.

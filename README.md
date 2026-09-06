@@ -2,7 +2,7 @@
 
 An AI music studio in the spirit of Suno, running entirely on your own Mac. Give it lyrics and a style and it renders a full song with vocals in about 30 seconds. Drop in a song you own and it separates your vocal, extracts the lyrics, and rebuilds the music around your real voice in any style — deep house, sufi house, jazz-rap, rap-rock, afro house, or anything you can describe.
 
-**Status:** Phase 4 complete — **Create, Library and Remix are live.** Create: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac. Remix: drop in a song you own (or one of your own takes) → stems, tempo, key and lyrics are extracted → pick a style → your real vocal comes back **auto-tuned and in front** with the AI performing around it, two variations per run. Phase 5 (harden + 1.0.0) is next — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
+**Status:** v1.0.0 — **Create, Library and Remix are live.** Create: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac. Remix: drop in a song you own (or one of your own takes) → stems, tempo, key and lyrics are extracted → pick a style → your real vocal comes back **auto-tuned and in front** with the AI performing around it, two variations per run. Full history in [`CHANGELOG.md`](./CHANGELOG.md) — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
 
 ---
 
@@ -170,6 +170,9 @@ Only remix music you own or have the rights to. Nothing leaves your Mac.
 | `docs/` | the plan, the spike results, the mock templates |
 
 ## 7. Troubleshooting
+
+Engine problems have their own runbook: [`docs/ENGINE_RUNBOOK.md`](./docs/ENGINE_RUNBOOK.md). The app tells you when
+something it needs is down — the banner names the piece and the command that fixes it.
 
 - **"engine not responding"** → `riff engine start`, then `tail -f var/log/engine.log`. First start after install takes ~30 s to load weights.
 - **A remix came back with no vocals** → you used `--mode instrumental`, or the transcription was empty (check `var/out/<name>/lyrics.txt`; pass the right `--lang`).

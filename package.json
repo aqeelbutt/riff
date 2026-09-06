@@ -1,9 +1,11 @@
 {
   "name": "riff",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=20.0.0" },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "./scripts/dev.sh",
     "docker:up": "docker compose up -d",
@@ -15,5 +17,7 @@
     "backend:test": "cd apps/backend && ./run_tests.sh",
     "backend:migrate": "cd apps/backend && uv run --offline alembic upgrade head"
   },
-  "devDependencies": { "turbo": "^2.5.0" }
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
 }

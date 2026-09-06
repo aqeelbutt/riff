@@ -1,1 +1,0 @@
-- Ports moved so Riff runs alongside PursuitAI: web 3010 (was 3000); API 8010, Postgres 5433, Redis 6380, engine 8001 unchanged.

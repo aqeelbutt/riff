@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Riff music engine sidecar (ACE-Step 1.5) — install / start / stop / status.
+# Riff music engine sidecar (ACE-Step 1.5) — install / start / stop / status / supervise.
 #
 #   scripts/engine.sh install   # uv sync + download core bundle (turbo 2B + LM 1.7B + VAE) + SFT
 #   scripts/engine.sh start     # REST API on http://127.0.0.1:8001 (MLX backend, turbo slot 1, SFT slot 2)
 #   scripts/engine.sh stop
 #   scripts/engine.sh status
+#   scripts/engine.sh supervise # keep it alive (health-check + restart) — what `pnpm dev` runs
 #
 # The engine is a pinned git submodule at services/ace-step (see .gitmodules).
 # Model weights live in services/ace-step/checkpoints/ (gitignored, ~15 GB).
@@ -69,6 +70,29 @@ case "${1:-}" in
       pkill -f "acestep-api" && echo "engine stopped" || echo "engine was not running"
     fi
     ;;
+  supervise)
+    # The sidecar can die silently (Phase 0: three Metal-level kills, no traceback). This keeps it up: health-check every
+    # 10 s, restart on two consecutive failures, back off if it keeps dying so a broken install doesn't spin forever.
+    need_engine
+    mkdir -p "$LOG_DIR"
+    fails=0; restarts=0
+    "$0" start
+    while true; do
+      sleep 10
+      if curl -sf "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then fails=0; restarts=0; continue; fi
+      fails=$((fails + 1))
+      [[ $fails -lt 2 ]] && continue
+      restarts=$((restarts + 1))
+      echo "[supervise] engine not responding — restart #$restarts ($(date +%T))" | tee -a "$LOG_DIR/engine-supervisor.log"
+      if [[ $restarts -gt 5 ]]; then
+        echo "[supervise] 5 restarts without a healthy window — stopping. See $LOG_DIR/engine.log" | tee -a "$LOG_DIR/engine-supervisor.log"
+        exit 1
+      fi
+      "$0" stop >/dev/null 2>&1 || true
+      sleep $((restarts * 3))
+      "$0" start
+      fails=0
+    done ;;
   status)
     if curl -sf "http://127.0.0.1:$PORT/health" >/dev/null; then
       curl -s "http://127.0.0.1:$PORT/health"; echo
@@ -80,5 +104,5 @@ case "${1:-}" in
     fi
     ;;
   *)
-    echo "usage: $0 {install|start|stop|status}" >&2; exit 2 ;;
+    echo "usage: $0 {install|start|stop|status|supervise}" >&2; exit 2 ;;
 esac

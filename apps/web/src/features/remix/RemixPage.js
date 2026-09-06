@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { EngineBanner } from "@/components/EngineBanner";
 import { API_URL, api } from "@/lib/api";
 import { fmtDur, coverGradient } from "@/lib/library";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
@@ -28,6 +29,7 @@ export default function RemixPage() {
       <nav className="mb-4 flex flex-wrap items-center gap-1.5 font-mono text-[11.5px] uppercase tracking-[.06em] text-ink-3" aria-label="Steps">
         {CRUMBS.map(([k, l], i) => <span key={k} className="contents">{i > 0 && <span>→</span>}<span className={`rounded-full border px-2.5 py-1 ${i === ci ? "border-acc bg-[var(--acc-soft)] text-ink" : i < ci ? "border-transparent bg-[var(--mint-soft)] text-mint" : "border-line"}`}>{l}</span></span>)}
       </nav>
+      <EngineBanner />
       {s.phase === "start" && <Start f={f} presets={presets} onToast={setToast} player={player} />}
       {s.phase === "analyzing" && <Analyzing f={f} />}
       {s.phase === "check" && <Check f={f} presets={presets} player={player} />}

@@ -22,3 +22,15 @@ export function songRows(songs) {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .map((s) => ({ id: s.id, title: s.title, status: s.status, takes: (s.generations || []).length, style: s.style }));
 }
+
+/** What to tell someone when rendering can't work right now. Returns null when everything needed is up.
+ *  `health` is the /health payload, null when the API itself is unreachable, undefined before the first check. */
+export function engineNotice(health) {
+  if (health === undefined) return null;              // don't flash a warning before we know
+  if (health === null) return { title: "Can't reach the app's API", body: "The backend isn't answering. Start the stack with", command: "pnpm dev" };
+  if (!health.db?.ok) return { title: "Database not reachable", body: "Postgres isn't up. Start it with", command: "pnpm docker:up" };
+  const e = health.engine || {};
+  if (!e.ok) return { title: "The music engine is offline", body: "You can still write lyrics and browse your library; rendering needs the engine. Start it with", command: "scripts/engine.sh start" };
+  if (health.worker && !health.worker.running) return { title: "The render worker isn't running", body: "Jobs will queue but nothing will render. Restart the API, or set", command: "WORKER_ENABLED=true" };
+  return null;
+}

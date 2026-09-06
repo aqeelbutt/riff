@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { EngineBanner } from "@/components/EngineBanner";
 import { API_URL } from "@/lib/api";
 import { fmt } from "@/features/player/usePlayer";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
@@ -37,6 +38,7 @@ export default function CreatePage() {
     <div className={`grid min-h-[calc(100vh-56px)] grid-cols-1 pb-24 ${SIDE_COLS[side]}`}>
       {side === "collapsed" ? <Rail onExpand={() => setSide("normal")} phase={s.phase} /> : <Compose f={f} presets={presets} side={side} setSide={setSide} />}
       <section className="min-w-0 px-4 py-6 md:px-8" aria-live="polite">
+        <EngineBanner />
         {s.phase === "compose" && <Empty />}
         {(s.phase === "briefing" || s.phase === "writing" || s.phase === "ready") && <Write f={f} />}
         {s.phase === "rendering" && <Rendering f={f} />}
