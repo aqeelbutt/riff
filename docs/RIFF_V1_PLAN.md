@@ -149,3 +149,9 @@ Roughly **6 weeks** of focused work to a V1 you'd use daily. Phase 0 is delibera
 ## 7. Next step
 
 Phase 0. I'll install ACE-Step 1.5 under `services/ace-step/` on this Mac, run the timing matrix and the deep-house cover test, and hand you the WAVs plus a go/no-go note. After that, the Create-flow clickable mock, per the mock-first gate.
+
+---
+
+## Phase 0 outcome (2026-09-06)
+
+Engineering GO — see [`PHASE0_SPIKE.md`](./PHASE0_SPIKE.md). ACE-Step 1.5 renders a 150-second song with vocals in ~30 s on the M4 Pro (turbo), two takes in ~1 min, SFT in 3 min; deep-house covers re-tempo correctly to the target BPM; Demucs stems in ~50 s. Two plan corrections: (1) the 5Hz LM is off the critical path — the backend passes BPM/key from the Claude brief explicitly (the caption alone is not honored); (2) the sidecar can die silently (2 crashes in the first 2 renders, 0 in the next 16) so it is supervised and jobs are retryable. A loudness-normalization mastering step is added to the render pipeline. The quality verdict awaits your listening pass on `spike/out/share/`.

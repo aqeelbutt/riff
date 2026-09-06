@@ -17,14 +17,21 @@ PID_FILE="$ROOT/var/engine.pid"
 PORT="${ACESTEP_API_PORT:-8001}"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Apple Silicon: MLX for the LM, MPS for the DiT. Auto-selected on other hosts.
+# Apple Silicon: MLX for the LM, DiT and VAE (native MLX paths). Auto-selected on other hosts.
 if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
   export ACESTEP_LM_BACKEND="${ACESTEP_LM_BACKEND:-mlx}"
 fi
 export TOKENIZERS_PARALLELISM=false
+# Phase 0 recipe (docs/PHASE0_SPIKE.md): ONE DiT slot, LM loaded lazily.
+#   - turbo in slot 1; SFT is switched in on demand via POST /v1/init {"model":"acestep-v15-sft"}
+#     rather than pre-loaded in slot 2 (a second resident DiT doubles Metal memory for a rarely-used mode).
+#   - ACESTEP_INIT_LLM=false: the 5Hz LM is optional (Claude supplies BPM/key/structure); load it
+#     on demand via POST /v1/init {"init_llm":true,"lm_model_path":"acestep-5Hz-lm-1.7B"}.
+#   - PYTHONFAULTHANDLER=1 so a native crash leaves a Python stack in the log (the engine died twice
+#     during VAE decode in the spike with NO traceback; never reproduced in 9 later renders).
+export PYTHONFAULTHANDLER=1
 export ACESTEP_CONFIG_PATH="${ACESTEP_CONFIG_PATH:-acestep-v15-turbo}"
-export ACESTEP_CONFIG_PATH2="${ACESTEP_CONFIG_PATH2:-acestep-v15-sft}"
-export ACESTEP_INIT_LLM="${ACESTEP_INIT_LLM:-true}"
+export ACESTEP_INIT_LLM="${ACESTEP_INIT_LLM:-false}"
 export ACESTEP_LM_MODEL_PATH="${ACESTEP_LM_MODEL_PATH:-acestep-5Hz-lm-1.7B}"
 
 need_engine() {
