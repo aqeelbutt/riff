@@ -2,7 +2,7 @@
 
 An AI music studio in the spirit of Suno, running entirely on your own Mac. Give it lyrics and a style and it renders a full song with vocals in about 30 seconds. Drop in a song you own and it separates your vocal, extracts the lyrics, and rebuilds the music around your real voice in any style — deep house, sufi house, jazz-rap, rap-rock, afro house, or anything you can describe.
 
-**Status:** Phase 1 complete — the API, the job runner and the music-provider seam are real; `pnpm dev` brings the whole stack up. The Create/Remix/Library screens land in Phases 2–4 — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
+**Status:** Phase 2 complete — the **Create screen is live**: a few words → Claude writes a structured brief and streams full lyrics → edit or rewrite any section → two takes render on your Mac. Remix and Library screens land in Phases 3–4 — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
 
 ---
 
@@ -36,7 +36,7 @@ pnpm dev
 
 | What | Where |
 |---|---|
-| Web (status page for now; Create/Remix screens land in Phase 2+) | http://localhost:3000 |
+| Web — **Create** (live), Status; Library/Remix in Phases 3–4 | http://localhost:3000 |
 | API (OpenAPI docs at `/docs`) | http://127.0.0.1:8010 |
 | Music engine | http://127.0.0.1:8001 |
 | Postgres / Redis (docker) | localhost:5433 / localhost:6380 |
@@ -65,7 +65,13 @@ curl -s http://127.0.0.1:8010/songs/<id>             # generations[] with audio_
 
 The engine keeps running in the background; logs are in `var/log/engine.log`. It occasionally dies silently after another GPU-heavy process starts (documented in the spike doc) — `riff` restarts it automatically when you run a command, or run `riff engine start` yourself.
 
-## 4. Create a song
+## 4. Create a song (web)
+
+Open http://localhost:3000, type what the song is about, pick a style, mood, voice and language, and press **Write lyrics**. Claude returns a brief (three titles, tempo, key, mood, structure) in ~8 s, then the full lyrics stream in section by section. Hover any section to **Rewrite**, **Shorter** or **Remove** it, or click into it and type. Press **Generate 2 takes** — the render runs on your Mac (~1 min on Fast), the page shows real stage progress, and you get two takes with waveforms, play/A-B, keep and download. Reloading mid-render re-attaches to the running job instead of starting another.
+
+Claude needs `ANTHROPIC_API_KEY` in `apps/backend/.env`. Without it the app runs on a placeholder lyrics provider (fine for trying the screens; the words will be dummy).
+
+## 4b. Create a song (command line)
 
 Write lyrics in a text file using section tags (`[Intro]`, `[Verse 1]`, `[Chorus]`, `[Bridge]`, `[Outro]` — add feel to a tag like `[Chorus - anthemic]`), then describe the style:
 

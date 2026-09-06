@@ -12,6 +12,8 @@ os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("MUSIC_PROVIDER", "fake")
 os.environ.setdefault("WORKER_ENABLED", "false")
 os.environ.setdefault("MASTERING_ENABLED", "false")
+os.environ.setdefault("LYRICS_PROVIDER", "fake")
+os.environ.setdefault("ANTHROPIC_API_KEY", "")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://riff:riff_dev@localhost:5433/riff_test")
 
 import pytest  # noqa: E402
@@ -27,6 +29,8 @@ from app.main import app  # noqa: E402
 from app.services import jobs as jobs_mod  # noqa: E402
 from app.services.music import set_provider  # noqa: E402
 from app.services.music.fake import FakeProvider  # noqa: E402
+from app.services.ai import telemetry as telemetry_mod  # noqa: E402
+from app.services.ai.lyrics import FakeLyrics, set_lyrics_provider  # noqa: E402
 
 TEST_URL = os.environ["DATABASE_URL"]
 ADMIN_URL = TEST_URL.rsplit("/", 1)[0] + "/riff"
@@ -58,7 +62,7 @@ async def _schema():
 async def _clean_tables():
     yield
     async with test_engine.begin() as c:
-        await c.execute(text("TRUNCATE TABLE generations, jobs, songs, users RESTART IDENTITY CASCADE"))
+        await c.execute(text("TRUNCATE TABLE generations, jobs, songs, users, ai_call_telemetry RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture(autouse=True)
@@ -66,6 +70,15 @@ def _redirect_jobs_to_test_engine(monkeypatch):
     """jobs.py opens its own sessions via app.core.database.async_session → point them at the test engine."""
     monkeypatch.setattr(db, "async_session", TestSession)
     monkeypatch.setattr(jobs_mod.db, "async_session", TestSession)
+    monkeypatch.setattr(telemetry_mod.db, "async_session", TestSession)
+
+
+@pytest.fixture(autouse=True)
+def fake_lyrics():
+    p = FakeLyrics()
+    set_lyrics_provider(p)
+    yield p
+    set_lyrics_provider(None)
 
 
 @pytest.fixture(autouse=True)

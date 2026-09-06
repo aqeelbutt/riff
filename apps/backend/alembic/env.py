@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import get_settings
 from app.core.database import Base
 import app.models  # noqa: F401
+import app.services.ai.telemetry  # noqa: F401
 
 config = context.config
 if config.config_file_name:

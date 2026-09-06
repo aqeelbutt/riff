@@ -13,6 +13,8 @@ dependencies = [
     "pydantic-settings>=2.3",
     "httpx>=0.27",
     "python-multipart>=0.0.9",
+    "anthropic>=0.60",
+    "sse-starlette>=3.4.11",
 ]
 
 [dependency-groups]

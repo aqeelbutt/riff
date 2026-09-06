@@ -9,7 +9,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import app.services.generation  # noqa: F401 — registers the `render` job handler
-from app.api import generations, health, jobs, presets, songs
+from app.api import generations, health, jobs, lyrics, presets, songs
+import app.services.ai.telemetry  # noqa: F401 — registers the AiCallTelemetry table
 from app.core.config import get_settings
 from app.main_state import state
 from app.services.jobs import worker_loop
@@ -43,3 +44,4 @@ app.include_router(songs.router)
 app.include_router(jobs.router)
 app.include_router(generations.router)
 app.include_router(presets.router)
+app.include_router(lyrics.router)

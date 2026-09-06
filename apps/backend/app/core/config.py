@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     mastering_enabled: bool = True
     mastering_target_lufs: float = -14.0
 
+    # Claude (lyrics). Empty key ⇒ the fake lyrics provider (dev without a key, and the test suite).
+    anthropic_api_key: str = ""
+    lyrics_provider: str = "auto"  # auto (claude if a key is set, else fake) | claude | fake
+    claude_model: str = "claude-opus-5"
+    claude_effort: str = "high"  # low | medium | high | xhigh | max
+
     # CORS for the web app
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
