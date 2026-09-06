@@ -38,15 +38,14 @@ def main():
     stems = Path(a.stems)
     voc, sr = sf.read(stems / "vocals.wav"); inst, _ = sf.read(stems / "instrumental.wav")
     ratio = a.bpm_to / a.bpm_from   # rubberband rate: >1 = faster/shorter
-    if abs(ratio - 1) > 1e-3:
-        print(f"stretching vocal + instrumental ×{ratio:.3f} ({a.bpm_from:.0f} → {a.bpm_to:.0f} BPM)")
-        voc = stretch(voc, sr, ratio); inst = stretch(inst, sr, ratio)
+    # Render the bed at the NATIVE tempo (cover keeps structure exactly: onset lag 0.00 s), then stretch
+    # bed + vocal together by the same ratio. Stretching the instrumental BEFORE the cover drifted ~2 s.
     work = OUT / "vk"; work.mkdir(exist_ok=True)
     inst_path = work / f"{a.name}.inst.wav"; sf.write(inst_path, inst, sr, subtype="PCM_16")
     # cover the instrumental only — no lyrics ⇒ the engine renders an instrumental bed
     print("rendering new bed via cover…")
     r = subprocess.run([sys.executable, str(SPIKE), "cover", "--name", f"{a.name}-bed", "--src", str(inst_path), "--caption", a.caption,
-                        "--strength", str(a.strength), "--steps", "8", "--shift", "3", "--model", "acestep-v15-turbo", "--bpm", str(int(a.bpm_to))],
+                        "--strength", str(a.strength), "--steps", "8", "--shift", "3", "--model", "acestep-v15-turbo", "--bpm", str(int(a.bpm_from))],
                        capture_output=True, text=True)
     print(r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr[-800:])
     bed_path = OUT / f"{a.name}-bed_1.wav"
@@ -54,6 +53,9 @@ def main():
     bed, bsr = sf.read(bed_path)
     if bsr != sr:  # resample bed to the vocal's rate
         import librosa; bed = librosa.resample(bed.T, orig_sr=bsr, target_sr=sr).T
+    if abs(ratio - 1) > 1e-3:
+        print(f"stretching bed + vocal ×{ratio:.3f} ({a.bpm_from:.0f} → {a.bpm_to:.0f} BPM)")
+        bed = stretch(bed, sr, ratio); voc = stretch(voc, sr, ratio)
     n = min(len(bed), len(voc)); bed = bed[:n]; voc = voc[:n]
     if voc.ndim == 1: voc = np.stack([voc, voc], 1)
     if bed.ndim == 1: bed = np.stack([bed, bed], 1)
