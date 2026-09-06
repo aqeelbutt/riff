@@ -25,6 +25,7 @@ def main():
     ap.add_argument("--vocal", required=True); ap.add_argument("--bed", required=True); ap.add_argument("--bpm", type=float, required=True)
     ap.add_argument("--name", required=True); ap.add_argument("--harmony", default="7,12"); ap.add_argument("--chops", action="store_true")
     ap.add_argument("--vocal-db", type=float, default=0.0); ap.add_argument("--bed-under", type=float, default=3.0, help="LU the bed sits under the lead")
+    ap.add_argument("--bpm-to", type=float, default=0, help="stretch bed + vocal together to this tempo after mixing layers")
     a = ap.parse_args(); t0 = time.time()
     voc, sr = sf.read(a.vocal); bed, bsr = sf.read(a.bed)
     if bsr != sr:
@@ -56,6 +57,9 @@ def main():
             end = min(pos + len(seg), n); chop[pos:end] += seg[:end - pos]; pos += slice_len
         layers.append(pan(chop, 0) * db(-4))
     vox = sum(layers)
+    if a.bpm_to and abs(a.bpm_to - a.bpm) > 0.5:
+        r = a.bpm_to / a.bpm; print(f"stretching mix ×{r:.3f} ({a.bpm:.0f} → {a.bpm_to:.0f} BPM)")
+        vox = pyrb.time_stretch(vox, sr, r); bed = pyrb.time_stretch(bed, sr, r); n = min(len(vox), len(bed)); vox = vox[:n]; bed = bed[:n]
     m = pyln.Meter(sr); lv = m.integrated_loudness(vox); lb = m.integrated_loudness(bed)
     mix = bed * db(lv - a.bed_under - lb) + vox
     mix = pyln.normalize.loudness(mix, m.integrated_loudness(mix), -14.0)

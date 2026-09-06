@@ -186,3 +186,20 @@ Three variants shipped to the user: emotional deep house at 118, chill at 108, a
 - The first choice on the Style step is **Keep my voice / Re-sing it / Instrumental**, defaulting to *Keep my voice* for uploads. "Re-sing" needs lyrics, which the analysis step now extracts automatically (Suno does this too) and shows for correction.
 - Lyric transcription is a first-class analysis stage ("Listening for the lyrics"), on the vocal stem, language-aware. Claude then romanizes non-Latin scripts per the user's rule.
 - Stem separation, Whisper, and the engine share **one GPU lane**, serialized.
+
+---
+
+# Phase 0e — the direction: **hybrid** (your voice + AI backing), and a command-line front door
+
+The user's verdict on the vocal levers: plain bed-swaps felt like "the same song with new instruments"; the AI re-sing loses the singer; **the hybrid — the real lead vocal placed over an AI cover that includes backing vocals answering it — is the direction.** Four more hybrids were rendered to map the space (more-AI, chill 118, sufi house, afro house), each ≈50 s (cover ~42 s + DSP ~8 s).
+
+How a hybrid is built (`bin/riff remix --mode hybrid`, default):
+1. Demucs → vocal stem; Whisper (vocal stem, `--lang`) → lyrics; librosa → tempo.
+2. ACE-Step **cover of the full song WITH the transcribed lyrics**, caption asks for "stacked backing vocal harmonies / call-and-response answering the lead", strength ≈0.45, **`bpm` = the song's own tempo** (alignment is exact only at native tempo).
+3. `vocal_fx.py`: the real vocal gets doubles, pitch-shifted harmonies (`--harmony 12` default), dotted-eighth delay throws, optional intro chops; the AI cover sits `--bed-under` LU below it (1 LU default; negative pushes the AI vocals forward).
+4. Optional `--bpm-to`: stretch the *finished* mix and vocal together (never stretch before the cover — that drifted 2 s).
+5. Loudness to −14 LUFS, true-peak safe → WAV + MP3 in `var/out/<name>/`.
+
+**CLI validated end-to-end as the README describes:** `riff create` (2 takes × 60 s jazz-rap) in 28 s; `riff remix` hybrid on the 112 s Urdu upload in 110 s including stems + transcription. The README is the runbook; the web app (Phases 1–4) wraps exactly these commands.
+
+Next for the Remix mock: the "Your voice" choice becomes **Your voice + AI backing** (default) / Your voice only / AI sings it / Instrumental, with an "AI vocals forward ⇄ back" dial (`--bed-under`) and a "Harmonies on my voice" toggle.

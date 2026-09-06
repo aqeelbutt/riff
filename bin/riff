@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""riff — command-line front door to the Riff music engine (until the web app lands in Phase 2+).
+
+  riff engine start|stop|status
+  riff create  --lyrics FILE --style "TEXT" [--bpm N] [--lang en] [--length 150] [--takes 2] [--name NAME] [--quality fast|studio]
+  riff remix   AUDIO --style "TEXT" [--lang ur] [--mode hybrid|keep|resing|instrumental] [--closeness 0.45]
+                     [--bpm-to N] [--harmony 7,12] [--chops] [--name NAME]
+  riff lyrics  AUDIO [--lang ur]        # stems + transcript only
+
+Outputs land in var/out/<name>/ (WAV + MP3 + lyrics.txt + run.json). One GPU job at a time.
+"""
+from __future__ import annotations
+import argparse, json, os, shutil, subprocess, sys, time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+PY_TOOLS = ROOT / "services/stems/.venv/bin/python"
+SPIKE = ROOT / "spike"
+OUT = ROOT / "var/out"
+ENGINE = ROOT / "scripts/engine.sh"
+
+def sh(cmd, **kw):
+    r = subprocess.run(cmd, text=True, **kw)
+    if r.returncode != 0: sys.exit(f"command failed: {' '.join(map(str, cmd))}")
+    return r
+
+def need_engine():
+    if subprocess.run(["curl", "-sf", "http://127.0.0.1:8001/health"], capture_output=True).returncode != 0:
+        print("engine not running — starting it (first request loads ~10 GB of weights)…")
+        sh([str(ENGINE), "start"])
+        for _ in range(60):
+            if subprocess.run(["curl", "-sf", "http://127.0.0.1:8001/health"], capture_output=True).returncode == 0: return
+            time.sleep(5)
+        sys.exit("engine did not come up — see var/log/engine.log")
+
+def need_tools():
+    if not PY_TOOLS.exists(): sys.exit("audio tools venv missing — run: scripts/tools.sh install")
+
+def slug(s): return "".join(c if c.isalnum() or c in "-_" else "-" for c in s.lower()).strip("-")[:40]
+
+def finish(name, files, extra):
+    d = OUT / name; d.mkdir(parents=True, exist_ok=True)
+    for f in files:
+        src, dst = Path(f), d / Path(f).name
+        if src.exists() and src.resolve() != dst.resolve(): shutil.copy2(src, dst)
+    json.dump({"name": name, "when": time.strftime("%Y-%m-%d %H:%M"), **extra}, open(d / "run.json", "w"), indent=1)
+    print(f"\n→ {d}/"); [print("   ", p.name) for p in sorted(d.iterdir())]
+
+def cmd_engine(a): sh([str(ENGINE), a.action])
+
+def cmd_create(a):
+    need_engine()
+    name = a.name or f"{slug(Path(a.lyrics).stem)}-{int(time.time())%100000}"
+    model = "acestep-v15-sft" if a.quality == "studio" else "acestep-v15-turbo"
+    steps = "50" if a.quality == "studio" else "8"
+    cmd = [sys.executable, str(SPIKE / "run_spike.py"), "text2music", "--name", name, "--lyrics", a.lyrics, "--caption", a.style,
+           "--duration", str(a.length), "--steps", steps, "--model", model, "--batch", str(a.takes), "--lang", a.lang]
+    if a.quality != "studio": cmd += ["--shift", "3"]
+    if a.bpm: cmd += ["--bpm", str(a.bpm)]
+    sh(cmd)
+    files = sorted((SPIKE / "out").glob(f"{name}_*.wav"))
+    mp3s = []
+    for f in files:
+        m = f.with_suffix(".mp3"); sh(["ffmpeg", "-v", "error", "-y", "-i", str(f), "-af", "loudnorm=I=-14:TP=-1:LRA=11", "-codec:a", "libmp3lame", "-q:a", "2", str(m)]); mp3s.append(m)
+    finish(name, [*files, *mp3s, a.lyrics], {"kind": "create", "style": a.style, "bpm": a.bpm, "lang": a.lang, "takes": a.takes, "quality": a.quality})
+
+def analyze(audio, lang, name):
+    """stems (demucs) + lyrics (whisper) → dict of paths. Shared by remix + lyrics."""
+    need_tools()
+    src = Path(audio).resolve()
+    wav = OUT / name / "source.wav"; wav.parent.mkdir(parents=True, exist_ok=True)
+    sh(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-ar", "44100", "-ac", "2", str(wav)])
+    print("separating stems (demucs on GPU, ~40 s)…")
+    sh([str(PY_TOOLS), "-m", "demucs", "-n", "htdemucs_ft", "-d", "mps", "-o", str(OUT / name / "stems"), "--float32", str(wav)], capture_output=True)
+    sd = OUT / name / "stems/htdemucs_ft/source"
+    stems = OUT / name / "stems";
+    sh([str(PY_TOOLS), "-c", f"""
+import numpy as np, soundfile as sf
+v,sr=sf.read('{sd}/vocals.wav'); inst=sum(sf.read('{sd}/'+k+'.wav')[0] for k in ['drums','bass','other'])
+sf.write('{stems}/vocals.wav',v,sr,subtype='FLOAT'); sf.write('{stems}/instrumental.wav',np.clip(inst,-1,1),sr,subtype='FLOAT')"""])
+    print("listening for the lyrics (whisper on the vocal stem)…")
+    sh([str(PY_TOOLS), str(SPIKE / "transcribe.py"), str(stems / "vocals.wav"), lang, str(OUT / name / "lyrics")], capture_output=True)
+    bpm = float(sh([str(PY_TOOLS), "-c", f"""
+import warnings; warnings.filterwarnings('ignore')
+import librosa, numpy as np
+y,sr=librosa.load('{wav}',sr=None,mono=True); print(float(np.atleast_1d(librosa.beat.beat_track(y=y,sr=sr)[0])[0]))"""], capture_output=True).stdout.strip())
+    lyr = (OUT / name / "lyrics.txt").read_text().strip()
+    print(f"tempo ≈ {bpm:.0f} BPM · {len(lyr.splitlines())} lyric lines")
+    return {"wav": wav, "stems": stems, "lyrics": OUT / name / "lyrics.txt", "bpm": bpm}
+
+def cmd_lyrics(a):
+    name = a.name or f"{slug(Path(a.audio).stem)}-lyrics"
+    r = analyze(a.audio, a.lang, name); print(open(r["lyrics"]).read()); finish(name, [], {"kind": "lyrics", "bpm": r["bpm"]})
+
+def cmd_remix(a):
+    need_engine()
+    name = a.name or f"{slug(Path(a.audio).stem)}-{a.mode}-{int(time.time())%100000}"
+    r = analyze(a.audio, a.lang, name)
+    bpm = int(round(a.bpm_from or r["bpm"]))
+    cover = [sys.executable, str(SPIKE / "run_spike.py"), "cover", "--src", str(r["wav"]), "--caption", a.style, "--strength", str(a.closeness),
+             "--steps", "8", "--shift", "3", "--model", "acestep-v15-turbo", "--bpm", str(bpm), "--lang", a.lang]
+    fx = [str(PY_TOOLS), str(SPIKE / "vocal_fx.py"), "--vocal", str(r["stems"] / "vocals.wav"), "--bpm", str(bpm), "--harmony", a.harmony]
+    if a.chops: fx.append("--chops")
+    if a.bpm_to: fx += ["--bpm-to", str(a.bpm_to)]
+    out_wav = None
+    if a.mode == "hybrid":      # your real lead + an AI cover WITH backing vocals under it (rendered at native tempo so it lines up)
+        sh(cover + ["--name", f"{name}-cover", "--lyrics", str(r["lyrics"])])
+        sh(fx + ["--bed", str(SPIKE / "out" / f"{name}-cover_1.wav"), "--name", name, "--bed-under", str(a.bed_under)])
+    elif a.mode == "keep":      # your real lead over a new INSTRUMENTAL bed (cover of the instrumental stems only)
+        sh([str(PY_TOOLS), str(SPIKE / "vocal_keep.py"), "--stems", str(r["stems"]), "--name", name, "--caption", a.style + ", instrumental",
+            "--bpm-from", str(bpm), "--bpm-to", str(a.bpm_to or bpm), "--strength", str(a.closeness), "--lang", a.lang])
+    elif a.mode == "resing":    # the AI sings your transcribed lyrics in the new style
+        sh(cover + ["--name", name, "--lyrics", str(r["lyrics"])])
+    else:                       # instrumental
+        sh(cover + ["--name", name])
+    files = [p for p in [SPIKE / "out" / f"{name}.wav", SPIKE / "out" / f"{name}_1.wav", SPIKE / "out/share/remix" / f"{name}.mp3"] if p.exists()]
+    if not any(p.suffix == ".mp3" for p in files) and files:
+        m = files[0].with_suffix(".mp3"); sh(["ffmpeg", "-v", "error", "-y", "-i", str(files[0]), "-af", "loudnorm=I=-14:TP=-1:LRA=11", "-codec:a", "libmp3lame", "-q:a", "2", str(m)]); files.append(m)
+    finish(name, [*files, r["lyrics"]], {"kind": "remix", "mode": a.mode, "style": a.style, "closeness": a.closeness, "bpm": bpm, "bpm_to": a.bpm_to, "harmony": a.harmony, "lang": a.lang})
+
+def main():
+    ap = argparse.ArgumentParser(prog="riff", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    e = sub.add_parser("engine"); e.add_argument("action", choices=["start", "stop", "status", "install"]); e.set_defaults(fn=cmd_engine)
+    c = sub.add_parser("create"); c.add_argument("--lyrics", required=True); c.add_argument("--style", required=True); c.add_argument("--bpm", type=int)
+    c.add_argument("--lang", default="en"); c.add_argument("--length", type=int, default=150); c.add_argument("--takes", type=int, default=2)
+    c.add_argument("--quality", choices=["fast", "studio"], default="fast"); c.add_argument("--name"); c.set_defaults(fn=cmd_create)
+    r = sub.add_parser("remix"); r.add_argument("audio"); r.add_argument("--style", required=True); r.add_argument("--lang", default="en")
+    r.add_argument("--mode", choices=["hybrid", "keep", "resing", "instrumental"], default="hybrid"); r.add_argument("--closeness", type=float, default=0.45)
+    r.add_argument("--bpm-from", type=float); r.add_argument("--bpm-to", type=float); r.add_argument("--harmony", default="12"); r.add_argument("--chops", action="store_true")
+    r.add_argument("--bed-under", type=float, default=1.0); r.add_argument("--name"); r.set_defaults(fn=cmd_remix)
+    l = sub.add_parser("lyrics"); l.add_argument("audio"); l.add_argument("--lang", default="en"); l.add_argument("--name"); l.set_defaults(fn=cmd_lyrics)
+    a = ap.parse_args(); a.fn(a)
+
+if __name__ == "__main__":
+    main()
