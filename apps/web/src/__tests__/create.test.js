@@ -61,11 +61,12 @@ describe("useJob", () => {
   beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
   const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  const res = (body, status = 200) => ({ ok: status < 300, status, text: async () => JSON.stringify(body), json: async () => body });
 
   it("polls to a terminal state, persists the in-flight id and clears it when done", async () => {
     const statuses = ["queued", "running", "done"];
     let n = 0;
-    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ id: "j1", status: statuses[Math.min(n++, 2)], progress: null }) }));
+    global.fetch = vi.fn(async () => res({ id: "j1", status: statuses[Math.min(n++, 2)], progress: null }));
     const onDone = vi.fn();
     const { result } = renderHook(() => useJob({ songId: "s1", intervalMs: 100, onDone }));
     await act(async () => { result.current.track("j1"); });
@@ -83,7 +84,7 @@ describe("useJob", () => {
 
   it("re-attaches to an in-flight job after a reload", async () => {
     localStorage.setItem("riff:job:s2", "j2");
-    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ id: "j2", status: "done", progress: null }) }));
+    global.fetch = vi.fn(async () => res({ id: "j2", status: "done", progress: null }));
     const onDone = vi.fn();
     renderHook(() => useJob({ songId: "s2", intervalMs: 100, onDone }));
     await flush();
@@ -94,7 +95,7 @@ describe("useJob", () => {
 
   it("keeps polling through a transient API error", async () => {
     let n = 0;
-    global.fetch = vi.fn(async () => (n++ === 0 ? { ok: false, status: 502, json: async () => ({}) } : { ok: true, json: async () => ({ id: "j3", status: "done" }) }));
+    global.fetch = vi.fn(async () => (n++ === 0 ? res({}, 502) : res({ id: "j3", status: "done" })));
     const onDone = vi.fn();
     const { result } = renderHook(() => useJob({ songId: "s3", intervalMs: 100, onDone }));
     await act(async () => { result.current.track("j3"); });
