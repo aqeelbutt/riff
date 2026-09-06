@@ -63,7 +63,11 @@ The engine process **died twice, silently, during VAE decode** — the very firs
 | LM loaded after the first render | ok |
 | 10 s / 30 s / 150 s renders | ok |
 
+**A third death, after the matrix finished:** the server exited silently while idle, and the log's last lines coincide with the stem separator (`mlx-audio-separator`, its own MLX process) loading its model at 14:44:57. That is the first pattern that fits all three: the second crash also overlapped a heavy install (`torch` wheels for the stems venv) and the first overlapped my early stem-tool probing. **Working hypothesis: a second Metal/MLX client starting while the engine holds ~10 GB of GPU buffers gets the engine killed** (GPU working-set pressure, no signal to Python). Not proven — but it costs nothing to design around and is consistent with everything seen.
+
 Upstream has fixed MLX↔MPS "command buffer double-commit" crashes in this area before (v0.1.7 notes), so this is a known class of bug in a young, fast-moving project. **Don't spend a session bisecting it again.** Design for it:
+
+- **One GPU workload at a time.** The V1 job runner has a single GPU lane: render jobs and stem-separation jobs are serialized, never concurrent, and the stems tool is never launched while a render is in flight. (Same rule for any future MLX/torch process on the box.)
 
 - `scripts/engine.sh` now encodes the safest recipe: **one DiT slot**, **LM lazy** (`ACESTEP_INIT_LLM=false`), `PYTHONFAULTHANDLER=1` so a native crash at least leaves a Python stack next time.
 - The V1 job runner treats a dropped connection / 5xx from the sidecar as a **retryable failure** (already in the plan's reaper + `MAX_ATTEMPTS`), and the sidecar gets a **supervisor + health check** so it restarts itself.
