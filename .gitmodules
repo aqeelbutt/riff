@@ -1,0 +1,3 @@
+[submodule "services/ace-step"]
+	path = services/ace-step
+	url = https://github.com/ace-step/ACE-Step-1.5.git
