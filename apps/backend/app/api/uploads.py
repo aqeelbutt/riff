@@ -57,6 +57,7 @@ class RemixOut(BaseModel):
     duration_s: float | None
     render_seconds: float | None
     is_favorite: bool
+    lyrics_segments: list | None
     error: str | None
     audio_url: str | None
     mp3_url: str | None

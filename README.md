@@ -2,7 +2,7 @@
 
 An AI music studio in the spirit of Suno, running entirely on your own Mac. Give it lyrics and a style and it renders a full song with vocals in about 30 seconds. Drop in a song you own and it separates your vocal, extracts the lyrics, and rebuilds the music around your real voice in any style — deep house, sufi house, jazz-rap, rap-rock, afro house, or anything you can describe.
 
-**Status:** v1.0.0 — **Create, Library and Remix are live.** Create: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac. Remix: drop in a song you own (or one of your own takes) → stems, tempo, key and lyrics are extracted → pick a style → your real vocal comes back **auto-tuned and in front** with the AI performing around it, two variations per run. Full history in [`CHANGELOG.md`](./CHANGELOG.md) — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
+**Status:** v1.1.0 — **Create, Library and Remix are live.** Lyrics follow the audio, and the Library holds your remixes alongside your songs. Create: a few words → Claude writes a brief and streams the lyrics → two takes render on your Mac. Remix: drop in a song you own (or one of your own takes) → stems, tempo, key and lyrics are extracted → pick a style → your real vocal comes back **auto-tuned and in front** with the AI performing around it, two variations per run. Full history in [`CHANGELOG.md`](./CHANGELOG.md) — see [`docs/RIFF_V1_PLAN.md`](./docs/RIFF_V1_PLAN.md); the clickable mocks are the [Create flow](https://claude.ai/code/artifact/80a6902e-94c4-4161-9ad3-33faea3e9b4f) and the [Remix flow](https://claude.ai/code/artifact/1071fa9b-0f92-4195-a1b6-1e982845d37f). Spike results and every measured number: [`docs/PHASE0_SPIKE.md`](./docs/PHASE0_SPIKE.md).
 
 ---
 
@@ -75,7 +75,15 @@ Claude needs `ANTHROPIC_API_KEY` in `apps/backend/.env`. Without it the app runs
 
 ## 4a. Your Library
 
-http://localhost:3010/library lists every song: search by title, style or lyric line; filter **Kept** / Ready / Rendering; sort by newest, title or number of takes. Hover a card to play its kept (or newest) take; the player bar stays with you as you move around the app, with A/B between a song's takes. Open a song to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own.
+http://localhost:3010/library is everything you've made **and everything you've remixed**, in one grid — songs you wrote, and songs you uploaded and remixed, the latter marked **remix** with their version count. Search by title, style or lyric line; filter All / Songs / Remixes / **Kept**; sort by newest, title or number of takes. Hover a card to play its kept (or newest) version; the player bar stays with you as you move around the app, with A/B between takes.
+
+Open a **song** to see all its takes grouped by run, keep (♥) or remove takes, download, rename by clicking the title, render **2 more takes**, or delete the song (a themed confirm, no native pop-ups). Rendering songs update on their own. Open a **remixed upload** to see the original, every version grouped by run, the separated stems, and keep/download/delete per version — plus **New version** to run the remix again with different settings.
+
+### Lyrics that follow the audio
+
+On either page, press **≡** next to a take or version to sync its lyrics to that audio. Whisper listens to that exact render, lines up your lyrics with what it heard, and from then on the lyric panel follows playback: the line that's sounding is lit, it scrolls itself into view, and clicking any line jumps the player there. Timings are stored per audio file, not per song, because two takes of the same lyric sing it differently.
+
+One honest caveat: for Hindi, Urdu, Punjabi and Bengali we write the lyrics in Roman script (it sounds better) while Whisper transcribes in the native script, so the words can't be matched line-to-line. When that happens the lines are spread evenly across what was heard and the panel tells you the timing is approximate — the words are right, the positions are a good guess.
 
 ## 4b. Create a song (command line)
 

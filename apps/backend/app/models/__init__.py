@@ -104,6 +104,9 @@ class Generation(Base):
     lufs: Mapped[float | None] = mapped_column(Float)
     render_seconds: Mapped[float | None] = mapped_column(Float)
     is_favorite: Mapped[bool] = mapped_column(default=False)
+    # Timings belong to an AUDIO, not to a song: two takes of the same lyric sing it differently, and a re-sung remix
+    # differs again. Filled by the `align` job (Whisper on this file); null until someone asks for it.
+    lyrics_segments: Mapped[list | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     song: Mapped[Song] = relationship(back_populates="generations")
@@ -207,6 +210,7 @@ class Remix(Base):
     render_seconds: Mapped[float | None] = mapped_column(Float)
     seed: Mapped[str | None] = mapped_column(String(40))
     is_favorite: Mapped[bool] = mapped_column(default=False)
+    lyrics_segments: Mapped[list | None] = mapped_column(JSON)  # see Generation.lyrics_segments
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

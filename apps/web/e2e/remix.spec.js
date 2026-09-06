@@ -61,4 +61,20 @@ test("a song you own becomes a remix with your voice in front", async ({ page })
   await expect(page.getByLabel("Now playing")).toBeVisible();
   await page.getByRole("button", { name: "♥ Keep" }).first().click();
   await expect(page.getByText("Kept")).toBeVisible();
+
+  // the remix is a first-class Library item, with its own page
+  await page.getByLabel("Main").getByRole("link", { name: "Library" }).click();
+  await page.getByRole("button", { name: "Remixes" }).click();
+  const card = page.getByRole("link", { name: /Aqeel|fixture|\.wav/i }).first();
+  await expect(card).toBeVisible();
+  await card.click();
+  await expect(page.getByRole("heading", { name: "Versions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Original" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stems" })).toBeVisible();
+
+  // lyrics can be aligned to one version, and then they follow the audio
+  const before = await page.getByRole("button", { name: /Sync lyrics for/ }).count();
+  expect(before).toBeGreaterThan(0);
+  await page.getByRole("button", { name: /Sync lyrics for/ }).first().click();
+  await expect(page.getByRole("button", { name: /Sync lyrics for/ })).toHaveCount(before - 1, { timeout: 30_000 });
 });

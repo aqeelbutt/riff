@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import current_user
 from app.core.database import get_db
 from app.models import Generation, User
+from app.schemas import JobOut
+from app.services.align import enqueue_align
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/generations", tags=["generations"])
@@ -61,3 +63,11 @@ async def delete_generation(gen_id: uuid.UUID, session: AsyncSession = Depends(g
                 p.unlink(missing_ok=True)
     await session.delete(g)
     await session.commit()
+
+
+@router.post("/{gen_id}/align", response_model=JobOut, status_code=202)
+async def align(gen_id: uuid.UUID, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> JobOut:
+    """Get line timings for this take so the lyrics can follow playback. Idempotent while a job is in flight."""
+    g = await _load(session, gen_id, user)
+    job = await enqueue_align(session, kind="generation", row_id=g.id, user_id=user.id)
+    return JobOut.model_validate(job, from_attributes=True)

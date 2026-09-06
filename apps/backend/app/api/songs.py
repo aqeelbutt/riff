@@ -24,7 +24,7 @@ def _gen_out(g: Generation) -> GenerationOut:
     return GenerationOut(
         id=g.id, song_id=g.song_id, batch_id=g.batch_id, take_index=g.take_index, provider=g.provider, model=g.model,
         seed=g.seed, metas=g.metas, duration_s=g.duration_s, lufs=g.lufs, render_seconds=g.render_seconds,
-        is_favorite=g.is_favorite, audio_url=f"/generations/{g.id}/audio", mp3_url=f"/generations/{g.id}/mp3" if g.mp3_path else None,
+        is_favorite=g.is_favorite, lyrics_segments=g.lyrics_segments, audio_url=f"/generations/{g.id}/audio", mp3_url=f"/generations/{g.id}/mp3" if g.mp3_path else None,
         created_at=g.created_at,
     )
 
