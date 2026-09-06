@@ -252,11 +252,19 @@ h1{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;
       <div>
         <div class="lbl">Your voice</div>
         <div class="seg" id="voice">
-          <button aria-pressed="true">Keep my voice<small>your real vocal, new music under it</small></button>
-          <button>Re-sing it<small>the AI sings your lyrics</small></button>
+          <button aria-pressed="true">Your voice + AI backing<small>your lead, AI harmonies answering you</small></button>
+          <button>Your voice only<small>your lead, new music under it</small></button>
+          <button>AI sings it<small>your lyrics, a new voice</small></button>
           <button>Instrumental<small>no vocals</small></button>
         </div>
-        <div class="note" id="voiceNote" style="margin-top:10px">Recommended. Your vocal is kept exactly; only the music is rebuilt. Tempo changes stretch it gently.</div>
+        <div class="note" id="voiceNote" style="margin-top:10px">Recommended. Your real vocal stays the lead; the AI performs backing vocals and harmonies around it in the new style.</div>
+        <div id="hybridOpts">
+          <div class="lbl" style="margin-top:14px">AI vocals</div>
+          <div class="slider"><small>Behind you</small><input type="range" id="aiFwd" min="-3" max="4" value="1" step="1" aria-label="AI vocals forward or back"><small>Forward</small></div>
+          <div class="sval" id="aiFwdV">Balanced — the AI answers you, you stay in front</div>
+          <div class="tog"><div><b>Harmonies on my voice</b><span>Doubles, a fifth and an octave stacked on your lead</span></div><button class="sw" id="harmSw" role="switch" aria-checked="true" aria-label="Harmonies on my voice"></button></div>
+          <div class="tog"><div><b>Vocal chops intro</b><span>Stutter your first phrase over the intro</span></div><button class="sw" id="chopSw" role="switch" aria-checked="false" aria-label="Vocal chops intro"></button></div>
+        </div>
         <div class="lbl" style="margin-top:18px">Mood</div>
         <div class="chips" id="moods"><button class="chip" aria-pressed="true">Emotional</button><button class="chip" aria-pressed="true">Chill</button><button class="chip">Euphoric</button><button class="chip">Dark</button><button class="chip">Dreamy</button><button class="chip">Late night</button></div>
       </div>
@@ -329,7 +337,7 @@ h1{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;
     <li><b>Timings are real</b> (~30 s analysis, ~60 s remix), compressed to a few seconds here.</li>
     <li><b>Mocked:</b> uploading a file uses the example audio; Library/Create are placeholders; Download shows a toast.</li>
   </ul>
-  <p>Things to judge: is “Keep my voice / Re-sing / Instrumental” the right first choice? Is one closeness slider enough, or do you want separate “how much the music changes” and “how much the vocal changes”? Are the desi presets named the way you'd say them?</p>
+  <p>Updated after the listening session: <b>Your voice + AI backing</b> (the hybrid you picked) is the default, with an AI-vocals forward/back dial and harmonies + chops toggles on your own voice. Things to judge: are the four voice options clear at a glance? Does the AI dial need a preview? Are the desi presets named the way you'd say them?</p>
   <button class="btn ghost sm" id="helpClose">Close</button></div></div>
 
 <script>
@@ -380,23 +388,26 @@ $("#backUp").addEventListener("click",()=>{stopAudio();show("s-upload",0);});
 /* 3 style */
 $("#presets").addEventListener("click",e=>{const b=e.target.closest(".pre");if(!b||b.dataset.toast)return;$$("#presets .pre").forEach(x=>x.setAttribute("aria-pressed",x===b));preset={name:b.dataset.p,bpm:+b.dataset.bpm};$("#tMatch").textContent=preset.bpm?`${preset.bpm} BPM`:`${song.bpm} BPM`;updateSum();});
 $("#voice").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$$("#voice button").forEach((x,i)=>{x.setAttribute("aria-pressed",x===b);if(x===b)voiceMode=i;});
-  $("#voiceNote").textContent=["Recommended. Your vocal is kept exactly; only the music is rebuilt. Tempo changes stretch it gently.","The AI sings your transcribed lyrics in a new voice that fits the style. Fix the lyrics on the previous step if anything's off.","Music only — great for a beat or a backing track."][voiceMode]; updateSum();});
+  $("#voiceNote").textContent=["Recommended. Your real vocal stays the lead; the AI performs backing vocals and harmonies around it in the new style.","Your vocal is kept exactly; only the music is rebuilt. Tempo changes stretch it gently.","The AI sings your transcribed lyrics in a new voice that fits the style. Fix the lyrics on the previous step if anything's off.","Music only — great for a beat or a backing track."][voiceMode]; $("#hybridOpts").hidden = voiceMode>1; $("#aiFwd").disabled = voiceMode!==0; updateSum();});
+const aiLabels=v=>v<=-2?"Way back — a whisper of AI harmonies":v<=0?"Behind you — subtle backing":v<=1?"Balanced — the AI answers you, you stay in front":v<=2?"Forward — a real duet":"Front — the AI leads, you ride on top";
+$("#aiFwd").addEventListener("input",e=>{$("#aiFwdV").textContent=aiLabels(+e.target.value);updateSum();});
+$("#harmSw").addEventListener("click",updateSum);
 $("#moods").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true");updateSum();});
 const closeLabels=v=>v<=35?"Reinvented — a new song that remembers yours":v<=45?"Loose — the melody survives, the rest is new":v<=55?"Balanced — recognizable, clearly transformed":v<=65?"Close — same feel, new instruments":"Faithful — subtle restyle";
 $("#close").addEventListener("input",e=>{$("#closeV").textContent=closeLabels(+e.target.value);updateSum();});
 $("#tempo").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.toast)return;$$("#tempo button").forEach(x=>x.setAttribute("aria-pressed",x===b));updateSum();});
 $$(".sw").forEach(s=>s.addEventListener("click",()=>{s.setAttribute("aria-checked",s.getAttribute("aria-checked")!=="true");$("#est").textContent=$$(".sw")[1].getAttribute("aria-checked")==="true"?"about 3 min":"about 1 min";}));
 function tempoNow(){const t=$("#tempo button[aria-pressed=true]");return t&&t.textContent.startsWith("Keep")?song.bpm:(preset.bpm||song.bpm);}
-function updateSum(){const v=["keep my voice","re-sing it","instrumental"][voiceMode];const c=closeLabels(+$("#close").value).split(" —")[0].toLowerCase();const m=$$("#moods .chip[aria-pressed=true]").map(x=>x.textContent.toLowerCase()).join(", ");$("#sum").innerHTML=`<b>${preset.name}</b> · ${v} · ${c} · ${tempoNow()} BPM${m?" · "+m:""}`;}
+function updateSum(){const v=["your voice + AI backing","your voice only","AI sings it","instrumental"][voiceMode]+(voiceMode===0&&$("#harmSw").getAttribute("aria-checked")==="true"?" + harmonies":"");const c=closeLabels(+$("#close").value).split(" —")[0].toLowerCase();const m=$$("#moods .chip[aria-pressed=true]").map(x=>x.textContent.toLowerCase()).join(", ");$("#sum").innerHTML=`<b>${preset.name}</b> · ${v} · ${c} · ${tempoNow()} BPM${m?" · "+m:""}`;}
 $("#backCheck").addEventListener("click",()=>show("s-check",1));
 
 /* 4 render */
 let rT=[];
 $("#remixBtn").addEventListener("click",startRender);
 function startRender(){
-  show("s-render",3); stopAudio(); $("#rTitle").textContent=`Remixing “${song.title}”`; $("#rSub").textContent=`${preset.name} · ${["keeping your voice","re-singing your lyrics","instrumental"][voiceMode]}. You'll get the original and the remix side by side.`;
+  show("s-render",3); stopAudio(); $("#rTitle").textContent=`Remixing “${song.title}”`; $("#rSub").textContent=`${preset.name} · ${["your voice with AI backing","keeping your voice","re-singing your lyrics","instrumental"][voiceMode]}. You'll get the original and the remix side by side.`;
   const rows=$$("#rStages .st-row"); rows.forEach(r=>{r.className="st-row";$(".tm",r).textContent="";$(".dot",r).textContent="";});
-  rows[0].firstChild.nextSibling.textContent = voiceMode===0?"Isolating your vocal":voiceMode===1?"Reading your lyrics":"Dropping the vocal"; rows[2].firstChild.nextSibling.textContent = voiceMode===0?"Placing your vocal back in":voiceMode===1?"Singing your lyrics":"Balancing the mix";
+  rows[0].firstChild.nextSibling.textContent = voiceMode<=1?"Isolating your vocal":voiceMode===2?"Reading your lyrics":"Dropping the vocal"; rows[1].firstChild.nextSibling.textContent = voiceMode===0?"Performing the AI backing vocals and new music":"Building the new music"; rows[2].firstChild.nextSibling.textContent = voiceMode===0?"Placing your lead in front, adding harmonies":voiceMode===1?"Placing your vocal back in":voiceMode===2?"Singing your lyrics":"Balancing the mix";
   rT.forEach(t=>{clearTimeout(t);clearInterval(t);}); rT=[]; const t0=Date.now();
   const tick=setInterval(()=>{const s=Math.min(60,Math.round((Date.now()-t0)/7000*60));$("#rEl").textContent=`${s} s · usually about 60 s`;$("#prog").style.width=Math.min(92,s/60*100)+"%";},120); rT.push(tick);
   [[0,0,"4 s"],[1,900,"42 s"],[2,5200,"2 s"],[3,6100,"3 s"]].forEach(([i,at,l])=>rT.push(setTimeout(()=>{rows.forEach((r,j)=>{if(j<i){r.className="st-row done";$(".dot",r).textContent="✓";}});rows[i].className="st-row cur";$(".tm",rows[i]).textContent=l;},at)));
@@ -407,7 +418,7 @@ $("#cancel").addEventListener("click",()=>{rT.forEach(t=>{clearTimeout(t);clearI
 /* 5 result + audio */
 const audio=new Audio(); let cur=null;
 function showResult(){
-  show("s-result",3); $("#resTitle").textContent=`${song.title} · ${preset.name}`; $("#remixMeta").textContent=`${tempoNow()} BPM · ${["your voice","re-sung","instrumental"][voiceMode]}`;
+  show("s-result",3); $("#resTitle").textContent=`${song.title} · ${preset.name}`; $("#remixMeta").textContent=`${tempoNow()} BPM · ${["your voice + AI backing","your voice","re-sung","instrumental"][voiceMode]}`;
   $("#resTags").innerHTML=[preset.name,closeLabels(+$("#close").value).split(" —")[0],`${song.bpm} → ${tempoNow()} BPM`,...$$("#moods .chip[aria-pressed=true]").map(x=>x.textContent),"turbo · 42 s"].map(t=>`<span>${t}</span>`).join("");
   $$(".ab .wave").forEach(w=>{drawWave(w.dataset.w,$("canvas",w));wireWave(w,w.dataset.w);});
   $("#player").classList.add("on"); $("#npT").textContent=`${song.title} · ${preset.name}`; $("#npS").textContent="Press play on the remix";

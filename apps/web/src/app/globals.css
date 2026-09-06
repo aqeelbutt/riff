@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Riff design tokens — the same set the approved mocks use. Dark studio is the committed look for V1. */
+:root {
+  --bg: #0E1014; --bg-2: #141821; --sur: #171B24; --sur-2: #1E2330; --sur-3: #262C3A; --line: #2A3040; --line-2: #363D4E;
+  --ink: #EEF0F4; --ink-2: #A6ADBB; --ink-3: #6E7684;
+  --acc: #FF6A3D; --acc-2: #FF8A66; --acc-soft: rgba(255, 106, 61, .14);
+  --mint: #5EE6B0; --mint-soft: rgba(94, 230, 176, .14);
+  --vio: #A78BFA; --vio-soft: rgba(167, 139, 250, .14);
+  --amber: #F5B640;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: "IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
