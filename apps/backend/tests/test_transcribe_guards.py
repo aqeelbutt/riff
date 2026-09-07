@@ -79,3 +79,20 @@ def test_a_doubled_word_is_left_alone():
 def test_the_compression_threshold_is_whispers_own():
     """Sung lines on a real failing stem measured 1.4-2.0; its hallucinated loops hit 5.2 and 16.3."""
     assert tr.MAX_COMPRESSION_RATIO == 2.4
+
+
+def test_a_script_choice_is_never_overridden_by_detection():
+    """Hindi and Urdu are the same spoken language in different scripts, so Whisper reporting 'hi' for an Urdu
+    song is a coin toss, not evidence. Picking Urdu must survive it — otherwise the lyrics come back in
+    Devanagari for a Pakistani song, which is what happened."""
+    assert tr._same_language("hi", "ur")
+    assert tr._same_language("ur", "hi")
+    assert tr._same_language("ur", "ur")
+
+
+def test_a_genuinely_different_language_still_wins_over_the_picker():
+    """Negative control — this is the case the override exists for: forced to English, an Urdu vocal made
+    Whisper invent words rather than fail."""
+    assert not tr._same_language("en", "hi")
+    assert not tr._same_language("en", "ur")
+    assert not tr._same_language("es", "ur")

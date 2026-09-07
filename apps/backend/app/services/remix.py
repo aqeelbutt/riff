@@ -141,7 +141,10 @@ async def handle_analyze(session: AsyncSession, job: Job) -> dict:
         up.lyrics_segments = lyr.get("segments") or []
         # Trust the audio over the dropdown. The language picked here is also what the ENGINE sings in later, so a
         # song mislabelled `en` doesn't just transcribe as gibberish — it gets re-sung in the wrong language too.
-        heard = lyr.get("detected_language")
+        # `language` is what the transcription actually used — the script has already decided whether the
+        # detection should override the pick (it must not for Hindi/Urdu, which differ only in writing system).
+        # Reading `detected_language` here instead would undo that and flip an Urdu song back to Hindi.
+        heard = lyr.get("language")
         if heard and heard != up.vocal_language:
             up.vocal_language = heard
         up.analysis = {"tools": tools.name, "vocals_energy": stems.get("vocals", {}).get("energy_share"),

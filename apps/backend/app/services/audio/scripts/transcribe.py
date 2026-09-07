@@ -14,6 +14,18 @@ import json
 import re
 import sys
 
+# Languages that sound identical because they ARE the same spoken language written in a different script.
+# Whisper cannot separate these from audio — there is nothing to hear; the difference is the writing system — so a
+# "detection" that disagrees with the user's pick inside one of these groups is a coin toss, not evidence, and the
+# pick has to win. Hindi/Urdu is the case this exists for (a Pakistani song came back in Devanagari). Other pairs
+# behave the same way (Serbian/Croatian, Malay/Indonesian) but are left out until there is a song to test them on.
+SAME_SPOKEN: list[set[str]] = [{"hi", "ur"}]
+
+
+def _same_language(a: str, b: str) -> bool:
+    return a == b or any({a, b} <= group for group in SAME_SPOKEN)
+
+
 MUSIC_ONLY = {"music", "موسیقی", "संगीत", "[music]", "(music)", "♪", "[موسیقى]", "you"}
 
 # Whisper's own hallucination signal, and far better than any text heuristic: `compression_ratio` is the gzip ratio
@@ -100,7 +112,7 @@ def main(path: str, lang: str, model: str = "mlx-community/whisper-large-v3-mlx"
         detected = None
 
     use = want
-    if detected and want and detected != want:
+    if detected and want and not _same_language(detected, want):
         warnings.append(f"this sounds like '{detected}', not the '{want}' you picked — transcribed as '{detected}'")
         use = detected  # trust the audio over the dropdown: forcing the wrong language invents words
     elif detected and not want:
@@ -122,10 +134,18 @@ def main(path: str, lang: str, model: str = "mlx-community/whisper-large-v3-mlx"
     segs, w = _drop_loops(segs)
     warnings += w
 
-    # Whisper's classic hallucination on near-silence, when it's the only thing found.
-    if segs and {_norm(s["text"]) for s in segs} <= {_norm(m) for m in MUSIC_ONLY}:
+    # Whisper labels instrumental passages "music" / "موسیقی" / "संगीत". That is never a lyric, so drop those lines
+    # wherever they appear — an earlier version only dropped them when they were the ONLY thing found, so on a song
+    # with real verses AND instrumental breaks the filler sailed through into the lyrics.
+    filler = {_norm(m) for m in MUSIC_ONLY}
+    if segs and {_norm(x["text"]) for x in segs} <= filler:
         warnings.append("only found filler like 'music' — the vocal stem may be empty")
         segs = []
+    elif segs:
+        dropped = [x for x in segs if _norm(x["text"]) in filler]
+        if dropped:
+            warnings.append(f"dropped {len(dropped)} line(s) of instrumental filler")
+            segs = [x for x in segs if _norm(x["text"]) not in filler]
 
     # A real song has words roughly throughout. Two lines for three minutes means the decode failed.
     dur = max((s["end"] for s in segs), default=0.0)

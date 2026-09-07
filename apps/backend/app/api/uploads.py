@@ -271,8 +271,14 @@ async def remix(upload_id: uuid.UUID, body: RemixIn, session: AsyncSession = Dep
     if body.moods:
         style += ", " + ", ".join(m.lower() for m in body.moods)
     closeness = body.closeness if body.closeness != 0.45 or not preset else preset.get("closeness", 0.45)
+    # A preset's tempo is part of the genre — deep house IS ~124 — and the web flow defaults to matching it. An API
+    # caller that simply names a preset used to get the source tempo instead, so the same request behaved differently
+    # depending on which surface made it. UNSET now means "match the preset"; an explicit null still means "keep".
+    bpm_to = body.bpm_to
+    if "bpm_to" not in body.model_fields_set and preset and not reimagining:
+        bpm_to = preset.get("bpm")
     direction = (body.direction or (preset["label"] if preset else None) or body.style or "").strip()[:120] if reimagining else None
-    rows, job = await enqueue_remix(session, u, mode=body.mode, style=style, preset_key=body.preset_key, closeness=closeness, bpm_to=body.bpm_to,
+    rows, job = await enqueue_remix(session, u, mode=body.mode, style=style, preset_key=body.preset_key, closeness=closeness, bpm_to=bpm_to,
                                     ai_forward=body.ai_forward, harmony=body.harmony, chops=body.chops, autotune=body.autotune,
                                     autotune_strength=body.autotune_strength, takes=body.takes, lyrics_override=body.lyrics, direction=direction,
                                     quality=body.quality)

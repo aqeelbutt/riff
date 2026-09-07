@@ -232,3 +232,32 @@ async def test_reimagine_needs_lyrics_and_rejects_a_remix_preset(client):
     assert (await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine", "preset_key": "ballad"})).status_code == 409
     await client.patch(f"/uploads/{up['id']}", json={"lyrics": "some words"})
     assert (await client.post(f"/uploads/{up['id']}/remix", json={"mode": "reimagine", "preset_key": "deephouse"})).status_code == 422
+
+
+# --- preset tempo: the two surfaces must agree -----------------------------------------------------
+# The web flow defaults to matching a preset's tempo (deep house IS ~124). An API caller that just named
+# the preset used to get the source tempo, so "remix into deep house" meant different things depending on
+# which surface asked — a real render came back at 105.5 BPM when 124 was intended.
+
+async def test_naming_a_preset_adopts_its_tempo(client):
+    up = await _analyzed(client)
+    r = await client.post(f"/uploads/{up['id']}/remix",
+                          json={"mode": "hybrid", "preset_key": "deephouse", "takes": 1})
+    assert r.status_code == 202
+    assert r.json()["remixes"][0]["bpm_to"] == 124
+
+
+async def test_an_explicit_null_still_keeps_the_source_tempo(client):
+    """Unset means 'match the preset'; explicitly asking for no change must still mean no change."""
+    up = await _analyzed(client)
+    r = await client.post(f"/uploads/{up['id']}/remix",
+                          json={"mode": "hybrid", "preset_key": "deephouse", "bpm_to": None, "takes": 1})
+    assert r.status_code == 202
+    assert r.json()["remixes"][0]["bpm_to"] is None
+
+
+async def test_an_explicit_tempo_wins_over_the_preset(client):
+    up = await _analyzed(client)
+    r = await client.post(f"/uploads/{up['id']}/remix",
+                          json={"mode": "hybrid", "preset_key": "deephouse", "bpm_to": 96, "takes": 1})
+    assert r.json()["remixes"][0]["bpm_to"] == 96
