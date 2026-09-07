@@ -50,3 +50,32 @@ def test_two_back_to_back_repeats_are_not_flagged():
 @pytest.mark.parametrize("a,b", [("Music", "music"), ("music!", "music"), ("  Music  ", "music")])
 def test_normalisation_ignores_case_padding_and_punctuation(a, b):
     assert tr._norm(a) == tr._norm(b)
+
+
+def test_collapses_a_word_stuttered_inside_one_segment():
+    """Whisper loops mid-segment too — a real transcript came back with the same word 55 times in one line."""
+    assert tr._collapse_within("आज " * 55 + "तो कुछ") == "आज आज तो कुछ"
+
+
+def test_collapses_a_repeated_PHRASE_not_just_a_repeated_word():
+    """Fixing the word-level loop only moved it: the next run of the same audio looped the phrase "आज तो" 32 times."""
+    assert tr._collapse_within("आज तो " * 32 + "कुछ") == "आज तो आज तो कुछ"
+    assert tr._collapse_within("कर दो कर दो कर दो कर दो") == "कर दो कर दो"
+
+
+def test_a_line_sung_twice_is_preserved():
+    """Negative control, and the one that matters most — repeating a line is what songs DO."""
+    line = "ye dil mera kehta raha"
+    assert tr._collapse_within(f"{line} {line}") == f"{line} {line}"
+    assert tr._collapse_within("tu jo nahi to kuch bhi nahi") == "tu jo nahi to kuch bhi nahi"
+
+
+def test_a_doubled_word_is_left_alone():
+    """Negative control: repetition is a normal thing to sing."""
+    assert tr._collapse_within("hey hey we are back") == "hey hey we are back"
+    assert tr._collapse_within("na na na na na") == "na na"
+
+
+def test_the_compression_threshold_is_whispers_own():
+    """Sung lines on a real failing stem measured 1.4-2.0; its hallucinated loops hit 5.2 and 16.3."""
+    assert tr.MAX_COMPRESSION_RATIO == 2.4

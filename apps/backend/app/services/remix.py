@@ -100,9 +100,12 @@ def ffmpeg_to_wav(src: Path, dst: Path) -> None:
         raise RuntimeError(f"couldn't read that audio file: {r.stderr[-300:]}")
 
 
-async def enqueue_analyze(session: AsyncSession, upload: Upload) -> Job:
+async def enqueue_analyze(session: AsyncSession, upload: Upload, *, relyric: bool = False) -> Job:
+    """`relyric` replaces lyrics that are already stored. Normally analysis leaves them alone (a take promoted from
+    the Library carries its exact words), but a re-run exists precisely because the transcription came out wrong."""
+    key = f"analyze:{upload.id}:relyric:{uuid.uuid4()}" if relyric else f"analyze:{upload.id}"
     job = await jobs.enqueue_job(session, kind="analyze", user_id=upload.user_id, stages=ANALYZE_STAGES,
-                                 idempotency_key=f"analyze:{upload.id}", payload={"upload_id": str(upload.id)})
+                                 idempotency_key=key, payload={"upload_id": str(upload.id), "relyric": relyric})
     upload.status = UploadStatus.ANALYZING
     await session.commit()
     return job
@@ -131,7 +134,9 @@ async def handle_analyze(session: AsyncSession, job: Job) -> dict:
         for kind, info in stems.items():
             session.add(Stem(upload_id=up.id, kind=kind, path=st.relative(Path(info["path"])), energy_share=info.get("energy_share")))
         up.duration_s, up.bpm, up.key, up.lufs = a.duration_s, a.bpm, a.key, a.lufs
-        if not (up.lyrics or "").strip():  # a take promoted from the Library already carries its exact lyrics
+        if job.payload.get("relyric") or not (up.lyrics or "").strip():
+            # Normally we keep lyrics we already have (a promoted take carries its exact words); a re-analysis is
+            # asked for when what we have is wrong, so it overwrites.
             up.lyrics = lyr.get("text") or ""
         up.lyrics_segments = lyr.get("segments") or []
         # Trust the audio over the dropdown. The language picked here is also what the ENGINE sings in later, so a

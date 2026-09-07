@@ -16,9 +16,55 @@ import sys
 
 MUSIC_ONLY = {"music", "موسیقی", "संगीत", "[music]", "(music)", "♪", "[موسیقى]", "you"}
 
+# Whisper's own hallucination signal, and far better than any text heuristic: `compression_ratio` is the gzip ratio
+# of the decoded text, so a loop explodes it. On a real failing stem the sung lines measured 1.4-2.0 while the
+# hallucinated ones hit 5.2 and 16.3. 2.4 is the threshold Whisper itself uses for its decoding fallback; here it
+# also decides what reaches the user, because the fallback alone does not remove the segment from the output.
+MAX_COMPRESSION_RATIO = 2.4
+
 
 def _norm(t: str) -> str:
     return re.sub(r"[^\w\s]", "", t.lower()).strip()
+
+
+def _collapse_within(text: str, keep: int = 2, max_phrase: int = 6) -> str:
+    """Collapse a word OR PHRASE stuttered many times inside ONE segment down to `keep` copies.
+
+    Whisper loops mid-segment, which the segment-level guard can't see. A real transcript came back with "आज"
+    fifty-five times in one line, and after fixing that at word level the next run looped the PHRASE "आज तो"
+    thirty-two times — so this has to work on n-grams, not just adjacent duplicate words. Two copies survive
+    because singing a line twice is ordinary; only a longer run is a decode artefact.
+    """
+    toks = text.split()
+    if len(toks) < 2 * keep + 1:
+        return text
+    out: list[str] = []
+    i = 0
+    while i < len(toks):
+        best = 0  # length of the phrase that repeats from here, if any
+        for p in range(1, max_phrase + 1):
+            if i + 2 * p > len(toks):
+                break
+            phrase = [_norm(t) for t in toks[i:i + p]]
+            reps = 1
+            while all(_norm(t) == phrase[k] for k, t in enumerate(toks[i + reps * p: i + (reps + 1) * p])) \
+                    and i + (reps + 1) * p <= len(toks):
+                reps += 1
+            if reps > keep:
+                best = p
+                break  # shortest repeating unit wins: "आज तो" over "आज तो आज तो"
+        if best:
+            p = best
+            reps = 1
+            while all(_norm(t) == _norm(toks[i + k]) for k, t in enumerate(toks[i + reps * p: i + (reps + 1) * p])) \
+                    and i + (reps + 1) * p <= len(toks):
+                reps += 1
+            out += toks[i: i + p * keep]   # keep two copies of the phrase
+            i += p * reps
+        else:
+            out.append(toks[i])
+            i += 1
+    return " ".join(out)
 
 
 def _drop_loops(segs: list[dict]) -> tuple[list[dict], list[str]]:
@@ -67,8 +113,12 @@ def main(path: str, lang: str, model: str = "mlx-community/whisper-large-v3-mlx"
         no_speech_threshold=0.6,
         compression_ratio_threshold=2.4,
     )
-    segs = [{"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
-            for s in r["segments"] if s["text"].strip()]
+    raw = [s for s in r["segments"] if s["text"].strip()]
+    kept = [s for s in raw if (s.get("compression_ratio") or 0) <= MAX_COMPRESSION_RATIO]
+    if len(kept) < len(raw):
+        warnings.append(f"dropped {len(raw) - len(kept)} line(s) the model itself decoded as repetition, not speech")
+    segs = [{"start": round(s["start"], 2), "end": round(s["end"], 2), "text": _collapse_within(s["text"].strip())}
+            for s in kept]
     segs, w = _drop_loops(segs)
     warnings += w
 

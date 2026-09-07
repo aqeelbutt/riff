@@ -238,6 +238,21 @@ async def stem_audio(upload_id: uuid.UUID, kind: str, session: AsyncSession = De
     return FileResponse(p, media_type="audio/wav", filename=f"{u.title}-{kind}.wav")
 
 
+@router.post("/{upload_id}/reanalyze", response_model=dict, status_code=202)
+async def reanalyze(upload_id: uuid.UUID, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> dict:
+    """Run stems + tempo/key + transcription again, REPLACING the stored lyrics.
+
+    Exists because a transcription can come out wrong — most often when the language was mislabelled, which makes
+    Whisper invent words rather than fail — and re-uploading the song to fix that is a silly thing to ask of anyone.
+    """
+    u = await _load(session, upload_id, user)
+    if u.status.value == "analyzing":
+        raise HTTPException(409, "already analyzing")
+    job = await enqueue_analyze(session, u, relyric=True)
+    return {"upload": upload_out(await _load(session, u.id, user)).model_dump(mode="json"),
+            "job": JobOut.model_validate(job, from_attributes=True).model_dump(mode="json")}
+
+
 @router.post("/{upload_id}/remix", response_model=dict, status_code=202)
 async def remix(upload_id: uuid.UUID, body: RemixIn, session: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> dict:
     u = await _load(session, upload_id, user)
