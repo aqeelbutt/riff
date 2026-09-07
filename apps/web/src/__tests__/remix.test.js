@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canRemix, initialState, isReimagine, modeOf, reduce, remixBody, stageRows, summary, targetBpm } from "@/features/remix/remixFlow";
+import { QUALITIES, canRemix, initialState, isReimagine, modeOf, reduce, remixBody, stageRows, summary, targetBpm } from "@/features/remix/remixFlow";
 
 const PRESETS = [{ key: "deephouse", label: "Deep House", bpm: 124 }, { key: "acoustic", label: "Acoustic", bpm: 0 }];
 const REIMAGINE = [{ key: "ballad", label: "Emotional ballad", bpm: 76 }, { key: "anthem", label: "Cinematic anthem", bpm: 122 }];
@@ -73,5 +73,31 @@ describe("summary + stages", () => {
   it("stageRows marks done/current/todo", () => {
     const job = { progress: { stages: [{ key: "queued" }, { key: "rendering" }, { key: "vocals" }], current: "rendering" } };
     expect(stageRows(job).map((r) => r.state)).toEqual(["done", "current", "todo"]);
+  });
+});
+
+describe("engine quality", () => {
+  // Regression: the remix path never sent a quality at all, so every remix silently ran on the turbo model at
+  // 8 inference steps — the engine's biggest quality lever was unreachable from the whole Remix surface.
+  const st = (over) => ({ ...initialState.style, ...over });
+
+  it("defaults to fast so auditioning stays quick", () => {
+    expect(initialState.style.quality).toBe("fast");
+    expect(remixBody(st(), null, [], []).quality).toBe("fast");
+  });
+
+  it("sends studio on both the reimagine and the restyle body", () => {
+    expect(remixBody(st({ approach: "reimagine", quality: "studio" }), null, [], []).quality).toBe("studio");
+    expect(remixBody(st({ approach: "restyle", quality: "studio" }), null, [], []).quality).toBe("studio");
+  });
+
+  it("falls back to fast for state saved before the option existed", () => {
+    const legacy = st();
+    delete legacy.quality;
+    expect(remixBody(legacy, null, [], []).quality).toBe("fast");
+  });
+
+  it("offers exactly the two engine settings", () => {
+    expect(QUALITIES.map((q) => q[0])).toEqual(["fast", "studio"]);
   });
 });

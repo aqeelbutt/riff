@@ -24,6 +24,24 @@ class ACEStepProvider:
         self.default_model = s.engine_default_model
         self.studio_model = s.engine_studio_model
 
+    async def _ensure_model(self, want: str) -> None:
+        """Load `want` into slot 1 if it isn't the resident model.
+
+        The engine only honours a `model` it has actually INITIALIZED: ask for one it hasn't and it silently
+        renders with whatever is loaded, logging `Model 'x' not found in [...], using primary: y`. That fallback
+        is invisible from the API side — a "studio" render came back in 34s looking exactly like turbo — so the
+        switch has to be explicit. ~20s, and only when the model actually differs.
+        """
+        h = await self.health()
+        if not h.get("ok") or h.get("loaded_model") == want:
+            return
+        async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout_s) as c:
+            r = await c.post("/v1/init", json={"model": want, "slot": 1})
+            r.raise_for_status()
+            loaded = ((r.json() or {}).get("data") or {}).get("loaded_model")
+        if loaded != want:
+            raise ProviderError(f"engine could not load {want!r} (still on {loaded!r}) — are its weights installed?")
+
     async def health(self) -> dict:
         try:
             async with httpx.AsyncClient(base_url=self.base_url, timeout=5) as c:
@@ -61,6 +79,7 @@ class ACEStepProvider:
     async def render(self, req: RenderRequest, on_progress: ProgressCb | None = None) -> RenderResult:
         t0 = time.time()
         body = self._body(req)
+        await self._ensure_model(body["model"])
         try:
             async with httpx.AsyncClient(base_url=self.base_url, timeout=httpx.Timeout(self.timeout_s, connect=10)) as c:
                 r = await c.post("/release_task", json=body)
@@ -96,11 +115,16 @@ class ACEStepProvider:
     async def cover(self, req: CoverRequest, on_progress: ProgressCb | None = None) -> RenderResult:
         """ACE-Step cover: multipart with the source file (the JSON form needs a server-absolute path; multipart is portable)."""
         t0 = time.time()
+        await self._ensure_model(self.studio_model if req.quality == "studio" else self.default_model)
         fields = {
-            "prompt": req.style, "task_type": "cover", "audio_cover_strength": str(req.strength), "inference_steps": "8", "shift": "3",
-            "model": self.default_model, "batch_size": "1", "audio_format": "wav", "thinking": "false", "lyrics": req.lyrics or "",
+            "prompt": req.style, "task_type": "cover", "audio_cover_strength": str(req.strength),
+            "inference_steps": "50" if req.quality == "studio" else "8",
+            "model": self.studio_model if req.quality == "studio" else self.default_model,
+            "batch_size": "1", "audio_format": "wav", "thinking": "false", "lyrics": req.lyrics or "",
             "vocal_language": req.vocal_language or "en", "use_random_seed": "false" if req.seed is not None else "true",
         }
+        if req.quality != "studio":
+            fields["shift"] = "3"  # turbo needs shift=3 (not auto-corrected); the SFT model must NOT get it
         if req.seed is not None:
             fields["seed"] = str(req.seed)
         if req.bpm:

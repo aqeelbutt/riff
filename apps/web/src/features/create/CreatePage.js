@@ -97,7 +97,7 @@ function Compose({ f, presets, side, setSide }) {
       <div>
         <Lbl hint="pick one">Style</Lbl>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Style">
-          {presets.create.map((p) => <Chip key={p.key} on={(c.style || "pop") === p.key} isNew={p.new} onClick={() => compose({ style: p.key, ...(p.lang ? { language: p.lang } : {}) })}>{p.label}</Chip>)}
+          {presets.create.map((p) => <Chip key={p.key} on={(c.style || "pop") === p.key} isNew={p.new} onClick={() => compose({ style: p.key, ...(p.lang ? { language: p.lang } : {}), ...(p.duration_s ? { duration_s: p.duration_s } : {}) })}>{p.label}</Chip>)}
         </div>
       </div>
       <div>

@@ -88,7 +88,8 @@ class FakeAudioTools:
 
     async def transcribe(self, vocals: Path, lang: str) -> dict:
         lines = self.lyrics_text.splitlines()
-        return {"language": lang or "en", "segments": [{"start": i * 4.0, "end": i * 4.0 + 3.5, "text": t} for i, t in enumerate(lines)], "text": "\n".join(lines)}
+        return {"language": lang or "en", "detected_language": lang or "en", "warnings": [],
+                "segments": [{"start": i * 4.0, "end": i * 4.0 + 3.5, "text": t} for i, t in enumerate(lines)], "text": "\n".join(lines)}
 
     async def vocal_mix(self, cfg: dict) -> dict:
         _sine_wav(Path(cfg["out"]), freq=262)

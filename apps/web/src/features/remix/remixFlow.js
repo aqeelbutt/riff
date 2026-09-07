@@ -22,7 +22,7 @@ export const initialState = {
   job: null,
   style: { approach: "reimagine", direction: "ballad", reimagineVoice: "ai",
            preset: "deephouse", custom: "", mode: "hybrid", closeness: 50, tempo: "match", bpmCustom: "", aiForward: 1, harmony: false, chops: false,
-           autotune: true, autotuneStrength: 85, takes: 2, moods: ["Emotional", "Chill"] },
+           autotune: true, autotuneStrength: 85, takes: 2, quality: "fast", moods: ["Emotional", "Chill"] },
   batch: [],           // remixes from the latest run
   error: null,
 };
@@ -68,6 +68,13 @@ export function modeOf(style) {
   return style.reimagineVoice === "mine" ? "reimagine_keep" : "reimagine";
 }
 
+/** Engine quality. Fast is the turbo model at 8 inference steps; studio is the SFT model at 50 — roughly six
+ *  times slower and audibly more detailed in the top end, which is most of what separates a render from a record. */
+export const QUALITIES = [
+  ["fast", "Fast", "turbo · seconds · for auditioning"],
+  ["studio", "Studio", "50 steps · ~6x slower · more detail"],
+];
+
 /** POST /uploads/{id}/remix body from the style state. */
 export function remixBody(style, upload, presets, reimaginePresets) {
   if (isReimagine(style)) {
@@ -82,6 +89,7 @@ export function remixBody(style, upload, presets, reimaginePresets) {
       harmony: style.harmony ? "12" : "",
       chops: !!style.chops,
       takes: style.takes,
+      quality: style.quality || "fast",
       moods: style.moods,
     };
   }
@@ -102,6 +110,7 @@ function restyleBody(style, upload, presets) {
     autotune: !!style.autotune,
     autotune_strength: Math.round(style.autotuneStrength) / 100,
     takes: style.takes,
+    quality: style.quality || "fast",
     moods: style.moods,
   };
 }
@@ -130,11 +139,11 @@ export const summary = (s, presets, reimaginePresets) => {
     const name = s.style.direction === "custom" ? (s.style.custom.trim() || "Custom") : (d?.label || s.style.direction);
     const voice = s.style.reimagineVoice === "mine" ? "your voice on it" : "newly sung";
     return [`Reimagined · ${name}`, voice, s.upload?.key && `in ${s.upload.key}`, s.style.autotune && s.style.reimagineVoice === "mine" && "auto-tune",
-      `${s.style.takes} variation${s.style.takes === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
+      `${s.style.takes} variation${s.style.takes === 1 ? "" : "s"}`, s.style.quality === "studio" && "studio"].filter(Boolean).join(" · ");
   }
   const p = (presets || []).find((x) => x.key === s.style.preset);
   const name = s.style.preset === "custom" ? (s.style.custom.trim() || "Custom") : (p?.label || s.style.preset);
   const mode = MODES.find((m) => m[0] === s.style.mode)?.[1].toLowerCase();
   const bpm = targetBpm(s.style, s.upload, presets) || (s.upload?.bpm ? Math.round(s.upload.bpm) : null);
-  return [name, mode, closenessLabel(s.style.closeness).split(" —")[0].toLowerCase(), bpm && `${bpm} BPM`, s.style.autotune && "auto-tune", `${s.style.takes} variation${s.style.takes === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
+  return [name, mode, closenessLabel(s.style.closeness).split(" —")[0].toLowerCase(), bpm && `${bpm} BPM`, s.style.autotune && "auto-tune", `${s.style.takes} variation${s.style.takes === 1 ? "" : "s"}`, s.style.quality === "studio" && "studio"].filter(Boolean).join(" · ");
 };

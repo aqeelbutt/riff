@@ -200,6 +200,9 @@ class Remix(Base):
     batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_uuid, index=True)  # one run = N variations
     take_index: Mapped[int] = mapped_column(Integer, default=1)
     direction: Mapped[str | None] = mapped_column(String(120))  # reimagine: "emotional ballad", "cinematic anthem", …
+    # "fast" = turbo, 8 steps (seconds, for auditioning); "studio" = the SFT model at 50 steps (~6x slower,
+    # noticeably more high-frequency detail). Stored per remix so a version says which model actually made it.
+    quality: Mapped[str] = mapped_column(String(12), default="fast", server_default="fast")
     brief: Mapped[dict | None] = mapped_column(JSON)  # reimagine: Claude's reading — meaning, arc, structure, lyrics, caption
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(20), default="queued")  # queued | rendering | ready | failed

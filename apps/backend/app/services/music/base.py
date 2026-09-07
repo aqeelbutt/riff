@@ -51,6 +51,7 @@ class CoverRequest:
     bpm: int | None = None
     vocal_language: str = "en"
     seed: int | None = None
+    quality: str = "fast"  # fast | studio — same meaning as RenderRequest.quality
     out_dir: Path = field(default_factory=lambda: Path("."))
 
 

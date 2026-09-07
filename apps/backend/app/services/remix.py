@@ -134,7 +134,14 @@ async def handle_analyze(session: AsyncSession, job: Job) -> dict:
         if not (up.lyrics or "").strip():  # a take promoted from the Library already carries its exact lyrics
             up.lyrics = lyr.get("text") or ""
         up.lyrics_segments = lyr.get("segments") or []
-        up.analysis = {"tools": tools.name, "vocals_energy": stems.get("vocals", {}).get("energy_share"), "language_heard": lyr.get("language")}
+        # Trust the audio over the dropdown. The language picked here is also what the ENGINE sings in later, so a
+        # song mislabelled `en` doesn't just transcribe as gibberish — it gets re-sung in the wrong language too.
+        heard = lyr.get("detected_language")
+        if heard and heard != up.vocal_language:
+            up.vocal_language = heard
+        up.analysis = {"tools": tools.name, "vocals_energy": stems.get("vocals", {}).get("energy_share"),
+                       "language_heard": lyr.get("language"), "detected_language": heard,
+                       "warnings": lyr.get("warnings") or []}
         up.status = UploadStatus.ANALYZED
         up.error = None
         await session.commit()
@@ -148,11 +155,12 @@ async def handle_analyze(session: AsyncSession, job: Job) -> dict:
 
 async def enqueue_remix(session: AsyncSession, up: Upload, *, mode: RemixMode, style: str, preset_key: str | None, closeness: float,
                         bpm_to: float | None, ai_forward: int, harmony: str, chops: bool, autotune: bool, autotune_strength: float,
-                        takes: int, lyrics_override: str | None = None, direction: str | None = None) -> tuple[list[Remix], Job]:
+                        takes: int, lyrics_override: str | None = None, direction: str | None = None,
+                        quality: str = "fast") -> tuple[list[Remix], Job]:
     batch = uuid.uuid4()
     rows = [Remix(user_id=up.user_id, upload_id=up.id, mode=mode, preset_key=preset_key, style=style, closeness=closeness, bpm_to=bpm_to,
                   ai_forward=ai_forward, harmony=harmony, chops=chops, autotune=autotune, autotune_strength=autotune_strength,
-                  direction=direction, batch_id=batch, take_index=i + 1, status="queued") for i in range(max(1, min(4, takes)))]
+                  direction=direction, quality=quality, batch_id=batch, take_index=i + 1, status="queued") for i in range(max(1, min(4, takes)))]
     session.add_all(rows)
     await session.flush()
     job = await jobs.enqueue_job(session, kind="remix", user_id=up.user_id, stages=stages_for(mode),
@@ -213,7 +221,7 @@ async def handle_remix(session: AsyncSession, job: Job) -> dict:
                     style=brief.style_caption + (", instrumental, no vocals" if instrumental else ""),
                     lyrics="" if instrumental else brief.lyrics, duration_s=int(min(600, max(60, up.duration_s or 180))),
                     bpm=bpm, key=brief.key, vocal_language=up.vocal_language, takes=1, instrumental=instrumental,
-                    out_dir=out_dir / f"take-{r.take_index}"), on_progress=progress)
+                    quality=r.quality, out_dir=out_dir / f"take-{r.take_index}"), on_progress=progress)
                 src_wav = res.takes[0].path
                 mix_info: dict = {}
                 if instrumental and "vocals" in stems:
@@ -230,7 +238,7 @@ async def handle_remix(session: AsyncSession, job: Job) -> dict:
                 r.wav_path, r.mp3_path = st.relative(wav), (st.relative(mp3) if mp3 else None)
                 r.lufs = lufs if lufs is not None else mix_info.get("lufs")
                 r.duration_s, r.render_seconds, r.seed = mix_info.get("duration_s"), res.render_seconds, res.takes[0].seed
-                r.params = {"caption": brief.style_caption, "bpm": bpm, "key": brief.key, "direction": r.direction,
+                r.params = {"caption": brief.style_caption, "bpm": bpm, "key": brief.key, "direction": r.direction, "quality": r.quality,
                             "notes_tuned": mix_info.get("notes_tuned"), "instrumental": instrumental}
                 r.status = "ready"
                 r.error = None
@@ -242,7 +250,7 @@ async def handle_remix(session: AsyncSession, job: Job) -> dict:
             caption = r.style + CAPTION_FOR_MODE[mode]
             res = await provider.cover(CoverRequest(src_path=cover_src, style=caption, lyrics=cover_lyrics, strength=r.closeness,
                                                     bpm=int(round(up.bpm)) if up.bpm else None, vocal_language=up.vocal_language,
-                                                    out_dir=out_dir / f"take-{r.take_index}"), on_progress=progress)
+                                                    quality=r.quality, out_dir=out_dir / f"take-{r.take_index}"), on_progress=progress)
             bed = res.takes[0].path
             ai_vocals = None
             if mode == RemixMode.HYBRID and "vocals" in stems:
@@ -262,7 +270,7 @@ async def handle_remix(session: AsyncSession, job: Job) -> dict:
             r.wav_path, r.mp3_path = st.relative(wav), (st.relative(mp3) if mp3 else None)
             r.lufs = lufs if lufs is not None else m.get("lufs")
             r.duration_s, r.render_seconds, r.seed = m.get("duration_s"), res.render_seconds, res.takes[0].seed
-            r.params = {"caption": caption, "cover": res.raw.get("request", {}), "notes_tuned": m.get("notes_tuned"),
+            r.params = {"caption": caption, "quality": r.quality, "cover": res.raw.get("request", {}), "notes_tuned": m.get("notes_tuned"),
                         "mix": {k: v for k, v in cfg.items() if k not in ("vocal", "bed", "ai_vocals", "out")}}
             r.status = "ready"
             r.error = None

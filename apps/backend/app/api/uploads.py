@@ -48,6 +48,7 @@ class RemixOut(BaseModel):
     chops: bool
     autotune: bool
     autotune_strength: float
+    quality: str
     direction: str | None
     brief: dict | None
     params: dict
@@ -105,6 +106,8 @@ class RemixIn(BaseModel):
     autotune: bool = True
     autotune_strength: float = Field(default=0.85, ge=0, le=1)
     takes: int = Field(default=2, ge=1, le=4)
+    quality: str = Field(default="fast", pattern="^(fast|studio)$",
+                         description="fast = turbo/8 steps, seconds; studio = the SFT model at 50 steps, ~6x slower and audibly more detailed")
     moods: list[str] = Field(default_factory=list)
     direction: str | None = Field(default=None, max_length=120, description="reimagine only: how to arrange it, e.g. 'emotional ballad'")
     lyrics: str | None = Field(default=None, max_length=8000, description="use these lyrics for this run instead of the transcription")
@@ -256,7 +259,8 @@ async def remix(upload_id: uuid.UUID, body: RemixIn, session: AsyncSession = Dep
     direction = (body.direction or (preset["label"] if preset else None) or body.style or "").strip()[:120] if reimagining else None
     rows, job = await enqueue_remix(session, u, mode=body.mode, style=style, preset_key=body.preset_key, closeness=closeness, bpm_to=body.bpm_to,
                                     ai_forward=body.ai_forward, harmony=body.harmony, chops=body.chops, autotune=body.autotune,
-                                    autotune_strength=body.autotune_strength, takes=body.takes, lyrics_override=body.lyrics, direction=direction)
+                                    autotune_strength=body.autotune_strength, takes=body.takes, lyrics_override=body.lyrics, direction=direction,
+                                    quality=body.quality)
     return {"remixes": [remix_out(r).model_dump(mode="json") for r in rows], "job": JobOut.model_validate(job, from_attributes=True).model_dump(mode="json")}
 
 

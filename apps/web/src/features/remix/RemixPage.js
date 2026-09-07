@@ -8,7 +8,7 @@ import { API_URL, api } from "@/lib/api";
 import { fmtDur, coverGradient } from "@/lib/library";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
 import { Wave } from "@/features/player/Wave";
-import { APPROACHES, MODES, REIMAGINE_VOICES, aiLabel, canRemix, closenessLabel, isReimagine, showsVoiceOpts, stageRows, summary, targetBpm } from "./remixFlow";
+import { APPROACHES, MODES, QUALITIES, REIMAGINE_VOICES, aiLabel, canRemix, closenessLabel, isReimagine, showsVoiceOpts, stageRows, summary, targetBpm } from "./remixFlow";
 import { useRemixFlow } from "./useRemixFlow";
 
 const PlayIcon = ({ playing }) => playing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z" /></svg>;
@@ -189,6 +189,11 @@ function Style({ f, presets }) {
             <Lbl><span className="mt-4 inline-block">Variations</span></Lbl>
             <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Variations">{[1, 2, 3, 4].map((n) => <button key={n} type="button" aria-pressed={st.takes === n} onClick={() => set({ takes: n })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.takes === n ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{n}</button>)}</div>
             <div className="mt-1.5 text-[12.5px] text-ink-2">Same arrangement, different performances. About a minute each.</div>
+            <Lbl><span className="mt-4 inline-block">Engine</span></Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Engine quality">
+              {QUALITIES.map(([k, label, hint]) => <button key={k} type="button" aria-pressed={st.quality === k} title={hint} onClick={() => set({ quality: k })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.quality === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{label}</button>)}
+            </div>
+            <div className="mt-1.5 text-[12.5px] text-ink-2">{st.quality === "studio" ? "The bigger model at 50 steps — noticeably more detail up top. Around six times slower." : "Turbo at 8 steps. Quick to audition; switch to Studio for the version you keep."}</div>
             <div className="mt-4 rounded-r-sm border border-line bg-sur p-3 text-[12.5px] text-ink-2"><b className="block text-[13px] font-semibold text-ink">What happens</b>Claude reads your lyrics — the meaning, which lines are the chorus, where it should lift — and writes the arrangement in {u.key || "your key"}. You&apos;ll see that reading with the result.</div>
           </div>
         </div>
@@ -230,6 +235,11 @@ function Style({ f, presets }) {
             {bpm && u.bpm && Math.abs(bpm - u.bpm) > u.bpm * 0.15 && <div className="mt-2 rounded-r-sm border-l-2 border-amber bg-[rgba(245,182,64,.14)] px-2.5 py-2 text-[12.5px] text-ink-2">A tempo change over ~15% stretches your voice audibly. Consider keeping the tempo.</div>}
             <Lbl><span className="mt-4 inline-block">Variations</span></Lbl>
             <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Variations">{[1, 2, 3, 4].map((n) => <button key={n} type="button" aria-pressed={st.takes === n} onClick={() => set({ takes: n })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.takes === n ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{n}</button>)}</div>
+            <Lbl><span className="mt-4 inline-block">Engine</span></Lbl>
+            <div className="grid auto-cols-fr grid-flow-col gap-[3px] rounded-r-sm border border-line bg-sur p-[3px]" role="group" aria-label="Engine quality">
+              {QUALITIES.map(([k, label, hint]) => <button key={k} type="button" aria-pressed={st.quality === k} title={hint} onClick={() => set({ quality: k })} className={`rounded-md px-2 py-1.5 text-[13px] ${st.quality === k ? "bg-sur-3 text-ink" : "text-ink-2"}`}>{label}</button>)}
+            </div>
+            <div className="mt-1.5 text-[12.5px] text-ink-2">{st.quality === "studio" ? "The bigger model at 50 steps — noticeably more detail up top. Around six times slower." : "Turbo at 8 steps. Quick to audition; switch to Studio for the version you keep."}</div>
             <div className="mt-1.5 text-[12.5px] text-ink-2">Different seeds, same settings — pick your favourite. About a minute each.</div>
           </div>
         </div>
@@ -237,7 +247,7 @@ function Style({ f, presets }) {
 
       <div className="sticky bottom-24 mt-6 flex flex-wrap items-center gap-3.5 rounded-[14px] border border-line-2 bg-[color-mix(in_srgb,var(--sur)_94%,transparent)] px-3.5 py-3 backdrop-blur-md">
         <div className="min-w-[200px] flex-1 text-[13px] text-ink-2"><b className="text-ink">{summary(s, presets.remix, presets.reimagine)}</b></div>
-        <span className="font-mono text-[11.5px] text-ink-3">about {st.takes} min</span>
+        <span className="font-mono text-[11.5px] text-ink-3">about {st.quality === "studio" ? st.takes * 6 : st.takes} min</span>
         <Btn onClick={f.toCheck}>Back</Btn>
         <Btn primary disabled={!canRemix(s)} onClick={f.remix}><PlayIcon />{re ? "Reimagine it" : "Remix it"}</Btn>
       </div>

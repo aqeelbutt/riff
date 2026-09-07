@@ -45,3 +45,53 @@ def test_reimagine_directions_are_arrangements_not_beats():
 async def test_presets_endpoint_serves_reimagine(client):
     body = (await client.get("/presets")).json()
     assert "reimagine" in body and any(d["key"] == "ballad" for d in body["reimagine"])
+
+
+# --- the genres this studio is actually FOR --------------------------------------------------------
+# Deep house, boom-bap and balearic are the house styles, so they carry an explicit contract rather than
+# relying on someone noticing a regression by ear.
+
+FOCUS = {
+    "deephouse": {"bpm": (118, 128), "surfaces": ("create", "remix")},
+    "boombap": {"bpm": (84, 96), "surfaces": ("create", "remix")},
+    "balearic": {"bpm": (100, 120), "surfaces": ("create", "remix")},
+}
+
+
+def _by_key(group):
+    return {p["key"]: p for p in group}
+
+
+def test_focus_genres_exist_on_both_surfaces_at_a_sane_tempo():
+    create, remix = _by_key(CREATE_PRESETS), _by_key(REMIX_PRESETS)
+    for key, spec in FOCUS.items():
+        for surface, group in (("create", create), ("remix", remix)):
+            if surface not in spec["surfaces"]:
+                continue
+            assert key in group, f"{key} missing from {surface}"
+            lo, hi = spec["bpm"]
+            assert lo <= group[key]["bpm"] <= hi, f"{key} on {surface} is at {group[key]['bpm']} BPM"
+
+
+def test_focus_genres_describe_the_mix_not_only_the_instruments():
+    """Measured against a commercial reference our renders were dull up top (13.7% of energy above 8 kHz vs 22.1%).
+    Asking the engine for air is the cheapest lever on that, so the captions must keep doing it."""
+    air = ("airy", "bright", "crisp", "open top end", "wide", "spacious")
+    for group in (CREATE_PRESETS, REMIX_PRESETS):
+        for p in group:
+            if p["key"] in FOCUS or p["key"].startswith("balearic"):
+                assert any(w in p["caption"].lower() for w in air), f"{p['key']} says nothing about the mix"
+
+
+def test_long_form_genres_ask_for_room():
+    """Deep house and balearic are built on a long rise; at the 150s default they render as a fragment."""
+    create = _by_key(CREATE_PRESETS)
+    for key in ("deephouse", "balearic"):
+        assert create[key].get("duration_s", 150) >= 240, f"{key} needs a longer default"
+
+
+def test_balearic_is_reachable_for_the_songs_it_converts():
+    """It exists to turn heartfelt rock / pop / R&B into drive music, so it must be a REMIX target too."""
+    remix = _by_key(REMIX_PRESETS)
+    assert "balearic" in remix and remix["balearic"]["closeness"] <= 0.6  # loose enough to actually restyle
+    assert any(k.startswith("balearic") for k in remix)
