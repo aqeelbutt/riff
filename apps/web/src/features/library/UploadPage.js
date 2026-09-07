@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
 import { coverGradient, fmtDur } from "@/lib/library";
-import { isSynced } from "@/lib/lyricSync";
+import { isApproximate, isSynced } from "@/lib/lyricSync";
+import { hasSeenCoach } from "@/lib/coach";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Coach, CoachButton } from "@/components/ui/Coach";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
 import { LyricSync } from "@/features/player/LyricSync";
 import { Wave } from "@/features/player/Wave";
 import { useAlign } from "@/features/player/useAlign";
+import { LYRIC_SYNC_COACH, lyricSyncSteps } from "@/features/player/lyricSyncCoach";
 
 const PlayIcon = ({ playing }) => playing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z" /></svg>;
 const Btn = ({ children, className = "", ...p }) => <button type="button" className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-r-sm border border-line bg-sur-2 px-3.5 py-2 text-[13.5px] font-semibold hover:border-line-2 disabled:opacity-50 ${className}`} {...p}>{children}</button>;
@@ -32,11 +35,15 @@ export default function UploadPage({ id }) {
   const [missing, setMissing] = useState(false);
   const [confirm, setConfirm] = useState(null); // {kind, id, title}
   const [toast, setToast] = useState(null);
+  const [coach, setCoach] = useState(false);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2200); return () => clearTimeout(t); }, [toast]);
 
   const load = useCallback(() => api(`/uploads/${id}`).then(setUp).catch(() => setMissing(true)), [id]);
   useEffect(() => { load(); }, [load]);
   const { align, busyId } = useAlign({ kind: "remixes", onDone: load });
+  // First run: wait until there is something to sync, so the walkthrough never points at an empty page.
+  const hasVersions = (up?.remixes || []).some((r) => r.status === "ready");
+  useEffect(() => { if (hasVersions && !hasSeenCoach(LYRIC_SYNC_COACH)) setCoach(true); }, [hasVersions]);
 
   if (missing) return <main className="mx-auto max-w-[1100px] px-6 py-10"><p className="text-ink-2">That upload isn&apos;t here anymore. <Link href="/library" className="text-acc">Back to Library</Link></p></main>;
   if (!up) return <main className="mx-auto max-w-[1100px] px-6 py-10 text-ink-3">Loading…</main>;
@@ -46,6 +53,7 @@ export default function UploadPage({ id }) {
   const ready = (up.remixes || []).filter((r) => r.status === "ready");
   const trackOf = (r, i) => ({ id: r.id, url: `${API_URL}${r.mp3_url || r.audio_url}`, title: up.title, sub: `${r.direction || "Remix"}${ready.length > 1 ? ` · ${i + 1}` : ""}`, art });
   const list = [orig, ...ready.map(trackOf)];
+  const firstUnsynced = ready.find((r) => !isSynced(r.lyrics_segments))?.id; // the coach points at one button, not every row
   const playingRemix = ready.find((r) => player.isCurrent(r.id));
   const synced = playingRemix && isSynced(playingRemix.lyrics_segments) ? playingRemix.lyrics_segments
     : player.isCurrent(orig.id) && isSynced(up.lyrics_segments) ? up.lyrics_segments : null;
@@ -76,7 +84,7 @@ export default function UploadPage({ id }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1fr_340px]">
-        <section className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="versions">
+        <section data-coach="versions" className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="versions">
           <h3 id="versions" className="mb-3 flex items-center font-disp text-base font-bold">Versions<span className="ml-auto font-mono text-[11px] text-ink-3">{ready.length ? `${ready.length} · ${ready.filter((r) => r.is_favorite).length} kept` : "none yet"}</span></h3>
           {ready.length === 0 && <p className="text-ink-2">No versions yet. <Link href={`/remix?upload=${up.id}`} className="text-acc">Make one →</Link></p>}
           {byBatch(ready).map((b, bi) => (
@@ -92,7 +100,7 @@ export default function UploadPage({ id }) {
                       <Wave url={`${API_URL}${r.mp3_url || r.audio_url}`} accent height={44} progress={cur ? player.progress : 0} label={`Seek ${t.sub}`} onSeek={(p) => { if (!cur) player.play(t, list); player.seek(p); }} />
                     </div>
                     <div className="flex items-center gap-1">
-                      {!isSynced(r.lyrics_segments) && <button type="button" title="Sync the lyrics to this audio" aria-label={`Sync lyrics for ${t.sub}`} onClick={() => align(r.id)} disabled={busyId === r.id} className="rounded-md px-2 py-1.5 text-[13px] text-ink-3 hover:bg-sur-3 hover:text-ink disabled:opacity-50">{busyId === r.id ? "…" : "≡"}</button>}
+                      {!isSynced(r.lyrics_segments) && <button type="button" data-coach={r.id === firstUnsynced ? "sync-button" : undefined} title="Time the lyrics to this audio" aria-label={`Sync lyrics for ${t.sub}`} onClick={() => align(r.id)} disabled={busyId === r.id} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11.5px] font-medium text-ink-2 hover:border-line-2 hover:text-ink disabled:opacity-50">{busyId === r.id ? "Listening…" : "Sync to audio"}</button>}
                       <button type="button" aria-pressed={r.is_favorite} aria-label="Keep" onClick={() => keep(r)} className={`rounded-md px-2 py-1.5 text-[15px] ${r.is_favorite ? "text-acc" : "text-ink-3 hover:text-ink"}`}>♥</button>
                       <a href={`${API_URL}${r.mp3_url || r.audio_url}`} download aria-label="Download" className="rounded-md px-2 py-1.5 text-ink-2 hover:bg-sur-3 hover:text-ink">↓</a>
                       <button type="button" aria-label="Remove version" onClick={() => setConfirm({ kind: "remix", id: r.id, title: r.brief?.title || r.direction || "this version" })} className="rounded-md px-2 py-1.5 text-ink-3 hover:bg-sur-3 hover:text-ink">✕</button>
@@ -103,8 +111,10 @@ export default function UploadPage({ id }) {
         </section>
 
         <div className="grid gap-4">
-          <section className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="lyrics">
-            <h3 id="lyrics" className="mb-3 flex items-center gap-2 font-disp text-base font-bold">Lyrics<span className="ml-auto font-mono text-[11px] text-ink-3">{synced ? "following the audio" : up.vocal_language.toUpperCase()}</span></h3>
+          <section data-coach="lyrics" className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="lyrics">
+            <h3 id="lyrics" className="mb-3 flex items-center gap-2 font-disp text-base font-bold">Lyrics
+              <CoachButton onClick={() => setCoach(true)} label="How lyric sync works" />
+              <span className="ml-auto font-mono text-[11px] text-ink-3">{synced ? "following the audio" : up.vocal_language.toUpperCase()}</span></h3>
             {synced ? <LyricSync segments={synced} time={player.now.t} live onSeek={(t) => { if (player.now.d) player.seek(t / player.now.d); }} maxHeight={420} />
               : <div className="max-h-[420px] overflow-auto whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{up.lyrics || "No lyrics."}</div>}
           </section>
@@ -120,6 +130,8 @@ export default function UploadPage({ id }) {
         </div>
       </div>
 
+      <Coach name={LYRIC_SYNC_COACH} open={coach} onClose={() => setCoach(false)}
+        steps={lyricSyncSteps({ unit: "version", hasApprox: isApproximate(synced) })} />
       <ConfirmDialog open={!!confirm} title={confirm?.kind === "upload" ? `Delete “${confirm?.title}”?` : `Remove “${confirm?.title}”?`}
         body={confirm?.kind === "upload" ? "Removes the upload, its stems and every version from this Mac. There's no undo." : "Removes just this version."}
         confirmLabel={confirm?.kind === "upload" ? "Delete" : "Remove"} onConfirm={del} onCancel={() => setConfirm(null)} />

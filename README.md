@@ -81,7 +81,9 @@ Open a **song** to see all its takes grouped by run, keep (♥) or remove takes,
 
 ### Lyrics that follow the audio
 
-On either page, press **≡** next to a take or version to sync its lyrics to that audio. Whisper listens to that exact render, lines up your lyrics with what it heard, and from then on the lyric panel follows playback: the line that's sounding is lit, it scrolls itself into view, and clicking any line jumps the player there. Timings are stored per audio file, not per song, because two takes of the same lyric sing it differently.
+The first time you open a song or remix that has words and audio, a short walkthrough runs itself and points at the controls below; press **?** beside the Lyrics heading to see it again any time.
+
+On either page, press **Sync to audio** next to a take or version to sync its lyrics to that audio. Whisper listens to that exact render, lines up your lyrics with what it heard, and from then on the lyric panel follows playback: the line that's sounding is lit, it scrolls itself into view, and clicking any line jumps the player there. Timings are stored per audio file, not per song, because two takes of the same lyric sing it differently.
 
 One honest caveat: for Hindi, Urdu, Punjabi and Bengali we write the lyrics in Roman script (it sounds better) while Whisper transcribes in the native script, so the words can't be matched line-to-line. When that happens the lines are spread evenly across what was heard and the panel tells you the timing is approximate — the words are right, the positions are a good guess.
 

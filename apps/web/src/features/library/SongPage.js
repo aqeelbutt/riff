@@ -5,8 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
 import { coverGradient, fmtDur, keptCount, takeLabel, takesByBatch } from "@/lib/library";
 import { parseSections } from "@/lib/lyrics";
-import { isSynced } from "@/lib/lyricSync";
+import { isApproximate, isSynced } from "@/lib/lyricSync";
+import { hasSeenCoach } from "@/lib/coach";
 import { LyricSync } from "@/features/player/LyricSync";
+import { Coach, CoachButton } from "@/components/ui/Coach";
+import { LYRIC_SYNC_COACH, lyricSyncSteps } from "@/features/player/lyricSyncCoach";
 import { useAlign } from "@/features/player/useAlign";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePlayerCtx } from "@/features/player/PlayerProvider";
@@ -30,6 +33,10 @@ export default function SongPage({ id }) {
   useEffect(() => { load(); }, [load]);
 
   const { align, busyId } = useAlign({ kind: "generations", onDone: () => load() });
+  const [coach, setCoach] = useState(false);
+  // First run, once the song actually has a take with words: before that the walkthrough has nothing to point at.
+  const canCoach = !!song?.generations?.length && !!song?.lyrics;
+  useEffect(() => { if (canCoach && !hasSeenCoach(LYRIC_SYNC_COACH)) setCoach(true); }, [canCoach]);
   const { job, track } = useJob({ songId: id, onDone: (j) => { load(); setToast(j.status === "done" ? "New takes are in" : `Render ${j.status}`); } });
   const rendering = job && !["done", "failed", "cancelled"].includes(job.status);
   useEffect(() => { if (!song || song.status !== "rendering" || rendering) return; const t = setInterval(load, 5000); return () => clearInterval(t); }, [song, rendering, load]);
@@ -89,7 +96,7 @@ export default function SongPage({ id }) {
       </div>}
 
       <div className="grid gap-4 md:grid-cols-[1fr_340px]">
-        <section className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="takes">
+        <section data-coach="versions" className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="takes">
           <h3 id="takes" className="mb-3 flex items-center font-disp text-base font-bold">Takes<span className="ml-auto font-mono text-[11px] text-ink-3">{song.generations.length ? `${song.generations.length} · ${keptCount(song)} kept` : song.status === "rendering" ? "rendering…" : "none yet"}</span></h3>
           {batches.length === 0 && <p className="text-ink-2">{song.status === "rendering" ? "Rendering on your Mac — about a minute." : "No takes yet."}</p>}
           {batches.map((b, bi) => (
@@ -113,10 +120,11 @@ export default function SongPage({ id }) {
               })}
             </div>))}
         </section>
-        <section className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="lyrics">
+        <section data-coach="lyrics" className="rounded-[14px] border border-line bg-sur p-4" aria-labelledby="lyrics">
           <h3 id="lyrics" className="mb-3 flex items-center gap-2 font-disp text-base font-bold">Lyrics
+            <CoachButton onClick={() => setCoach(true)} label="How lyric sync works" />
             <span className="ml-auto font-mono text-[11px] text-ink-3">{song.vocal_language.toUpperCase()}</span>
-            {playingTake && !isSynced(playingTake.lyrics_segments) && <button type="button" onClick={() => align(playingTake.id)} disabled={busyId === playingTake.id}
+            {playingTake && !isSynced(playingTake.lyrics_segments) && <button type="button" data-coach="sync-button" onClick={() => align(playingTake.id)} disabled={busyId === playingTake.id}
               className="rounded-md border border-line px-2 py-1 font-sans text-[11.5px] font-medium text-ink-2 hover:text-ink disabled:opacity-50">{busyId === playingTake.id ? "Listening…" : "Sync to audio"}</button>}
           </h3>
           {playingTake && isSynced(playingTake.lyrics_segments)
@@ -127,6 +135,8 @@ export default function SongPage({ id }) {
         </section>
       </div>
 
+      <Coach name={LYRIC_SYNC_COACH} open={coach} onClose={() => setCoach(false)}
+        steps={lyricSyncSteps({ unit: "take", hasApprox: isApproximate(playingTake?.lyrics_segments) })} />
       <ConfirmDialog open={confirm} title={`Delete “${song.title}”?`} body="Removes the song, its lyrics and every take from this Mac. There's no undo." onConfirm={del} onCancel={() => setConfirm(false)} />
       {toast && <div role="status" className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full bg-ink px-4 py-2.5 text-[13.5px] font-medium text-bg">{toast}</div>}
     </main>
