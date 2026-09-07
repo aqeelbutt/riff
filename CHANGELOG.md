@@ -2,6 +2,16 @@
 
 Every release folds the fragments queued in [`changelog.d/`](./changelog.d) into a dated section.
 
+## [1.2.0] — 2026-09-06
+
+### Added
+
+- **A walkthrough for lyric sync.** The first time you open a song or a remixed upload that has words and audio, a short four-step coach runs itself: it rings the real Sync control, explains why timings belong to each take rather than to the song, plays the panel so the lit line demonstrates itself, and — the part people misread as a bug — says plainly when the timing is approximate and why romanized Urdu or Hindi lyrics can't be matched line to line. It teaches once across both pages, and afterwards lives behind a **?** beside the Lyrics heading. Arrow keys and Escape work.
+
+### Changed
+
+- The per-version sync control on an upload is now a labelled **Sync to audio** button instead of a bare `≡` glyph, matching the song page. A coach that has to explain an unlabelled icon is compensating for a fixable design problem.
+
 ## [1.1.0] — 2026-09-06
 
 ### Added

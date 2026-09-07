@@ -1,5 +1,5 @@
 // Remix journey on fake tools + fake engine: upload → analysis (stems, lyrics) → style (hybrid default, auto-tune on) → render → A/B result.
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("./coach.setup");
 const path = require("node:path");
 const fs = require("node:fs");
 

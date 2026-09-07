@@ -1,5 +1,5 @@
 // Create → lyrics → generate → takes → play → Library → song page → keep → delete. Fake providers: seconds, deterministic.
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("./coach.setup");
 
 test("a song goes from a few words to the library", async ({ page }) => {
   await page.goto("/");

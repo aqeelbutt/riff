@@ -22,7 +22,7 @@ export function LyricSync({ segments, time, live, onSeek, maxHeight = 520 }) {
   if (!segments?.length) return null;
   return (
     <>
-    {isApproximate(segments) && <p className="mb-2 text-[11.5px] text-ink-3">Timing is approximate — the words are yours, the positions are spread across what was heard.</p>}
+    {isApproximate(segments) && <p data-coach="lyric-approx" className="mb-2 text-[11.5px] text-ink-3">Timing is approximate — the words are yours, the positions are spread across what was heard.</p>}
     <div ref={box} className="overflow-auto text-sm leading-relaxed" style={{ maxHeight }} aria-live={live ? "polite" : "off"}>
       {segments.map((s, i) => {
         const timed = typeof s.start === "number";
