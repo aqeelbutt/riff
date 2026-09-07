@@ -1,1 +1,0 @@
-- The per-version sync control on an upload is now a labelled **Sync to audio** button instead of a bare `≡` glyph, matching the song page. A coach that has to explain an unlabelled icon is compensating for a fixable design problem.
